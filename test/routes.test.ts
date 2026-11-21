@@ -71,10 +71,19 @@ describe("public routes", () => {
 
     const wrong = await panel.fetch(req("PUT", "/api/customers"));
     expect(wrong.status).toBe(405);
-    expect(wrong.headers.get("allow")).toBe("GET");
+    // GET routes also answer HEAD, so `Allow` lists it.
+    expect(wrong.headers.get("allow")).toBe("GET, HEAD");
 
     const multi = await panel.fetch(req("POST", "/api/customers/c1"));
-    expect(multi.headers.get("allow")).toBe("GET, PATCH, DELETE");
+    expect(multi.headers.get("allow")).toBe("GET, HEAD, PATCH, DELETE");
+  });
+
+  test("a portal Bearer token is recognized case-insensitively", async () => {
+    const { panel } = testPanel({ portal: { secret: "s3cret" } });
+    const res = await panel.fetch(
+      req("GET", "/config", undefined, { authorization: "bearer entpt_bogus.sig" }),
+    );
+    expect(res.status).toBe(401);
   });
 
   test("HEAD is answered like GET", async () => {
@@ -691,8 +700,14 @@ describe("errors", () => {
       req("POST", "/api/customers/org_1/grants", { feature: "api_calls", amount: 1 }),
     );
     expect(res.status).toBe(423);
-    expect(await body(res)).toMatchObject({ code: "READONLY" });
+    expect(await body(res)).toEqual({
+      error: "Cannot createGrant: @xtandard/entitlements is in readonly mode.",
+      code: "READONLY",
+    });
     expect((await panel.fetch(req("GET", "/api/customers"))).status).toBe(200);
+    const preview = await panel.fetch(req("GET", "/api/portal/me"));
+    expect(preview.status).toBe(400);
+    expect(await body(preview)).toMatchObject({ code: "VALIDATION" });
     const consumed = await panel.fetch(
       req("POST", "/api/v1/consume", { customer: "org_1", feature: "api_calls" }),
     );

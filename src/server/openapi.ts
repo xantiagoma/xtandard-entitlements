@@ -15,6 +15,12 @@
  * @module
  */
 
+import {
+  buildOpenApiDocument as kitBuildOpenApiDocument,
+  errorResponse,
+  ref,
+} from "@xtandard/kit/server/router";
+import { isMutatingAction } from "../authorization/contract.ts";
 import { API_ROUTES, CONFIG_PATHS, type RouteSpec } from "./routes.ts";
 
 /** Options for {@link buildOpenApiDocument}. */
@@ -29,7 +35,6 @@ export interface OpenApiOptions {
 
 type Schema = Record<string, unknown>;
 
-const ref = (name: string): Schema => ({ $ref: `#/components/schemas/${name}` });
 const arrayOf = (name: string): Schema => ({ type: "array", items: ref(name) });
 const str: Schema = { type: "string" };
 const num: Schema = { type: "number" };
@@ -556,33 +561,19 @@ const schemas: Record<string, Schema> = {
   PortalManageInput: obj({ returnUrl: str }, [], { additionalProperties: false }),
 };
 
-const errorRes = (description: string): Schema => ({
-  description,
-  content: { "application/json": { schema: ref("Error") } },
-});
+const errorRes = errorResponse;
 
-/** Error responses every authenticated route may produce. */
-const AUTHED_ERRORS: Record<string, Schema> = {
-  "401": errorRes("Unauthenticated, or a bad / expired portal token"),
-  "403": errorRes("Denied by authorization, portal scope or a hook"),
-};
-
-function responseOf(spec: RouteSpec): Schema {
-  const { status, schema, description } = spec.response;
-  if (status === 204 || schema === undefined) return { description };
-  return {
-    description,
-    content: {
-      "application/json": { schema: typeof schema === "string" ? ref(schema) : schema },
-    },
-  };
-}
-
-function operation(spec: RouteSpec): Schema {
-  const responses: Record<string, Schema> = { [String(spec.response.status)]: responseOf(spec) };
-  if (spec.body || spec.query?.length) responses["400"] = errorRes("Invalid input");
-  if (spec.action) Object.assign(responses, AUTHED_ERRORS);
-  if (spec.path.includes(":")) responses["404"] = errorRes("Not found");
+/**
+ * The entitlements-specific parts of each operation, over the kit's generated
+ * one: auth error wording, billing / portal 404s, the 423 readonly status and
+ * the `consume` idempotency header.
+ */
+function operation(spec: RouteSpec, generated: Schema): Schema {
+  const responses = generated.responses as Record<string, Schema>;
+  if (spec.action) {
+    responses["401"] = errorRes("Unauthenticated, or a bad / expired portal token");
+    responses["403"] = errorRes("Denied by authorization, portal scope or a hook");
+  }
   if (spec.tag === "billing") {
     responses["400"] = errorRes("Bad signature / payload or invalid input");
     responses["404"] = errorRes("Billing not configured, or unknown provider");
@@ -590,48 +581,27 @@ function operation(spec: RouteSpec): Schema {
   if (spec.tag === "portal" && spec.method === "POST") {
     responses["404"] = errorRes("Billing not configured");
   }
-  if (spec.action && /:(update|delete|write)$/.test(spec.action)) {
-    responses["423"] = errorRes("The panel is readonly");
-  }
-  const params: Schema[] = [
-    ...[...spec.path.matchAll(/:([A-Za-z]+)/g)].map((m) => ({
-      name: m[1],
-      in: "path",
-      required: true,
-      schema: str,
-    })),
-    ...(spec.query ?? []).map((q) => ({
-      name: q.name,
-      in: "query",
-      required: false,
-      description: q.description,
-      schema: q.type === "integer" ? int : str,
-    })),
-  ];
+  const parameters = (generated.parameters as Schema[] | undefined) ?? [];
   if (spec.operationId === "consume") {
-    params.push({ name: "idempotency-key", in: "header", required: false, schema: str });
+    parameters.push({ name: "idempotency-key", in: "header", required: false, schema: str });
   }
-  return {
-    operationId: spec.operationId,
-    tags: [spec.tag],
-    summary: spec.summary,
-    ...(spec.description ? { description: spec.description } : {}),
-    ...(spec.action ? { "x-action": spec.action } : { security: [] }),
-    ...(params.length ? { parameters: params } : {}),
-    ...(spec.body
-      ? {
-          requestBody: {
-            required: spec.bodyRequired ?? true,
-            content: { "application/json": { schema: ref(spec.body) } },
-          },
-        }
-      : {}),
-    responses,
-  };
+  return { ...generated, ...(parameters.length ? { parameters } : {}), responses };
 }
 
-/** `/api/customers/:id` → `/api/customers/{id}`. */
-const toOpenApiPath = (path: string): string => path.replace(/:([A-Za-z]+)/g, "{$1}");
+/** The bootstrap config operation (served at both {@link CONFIG_PATHS}). */
+const configOperation = (operationId: string): Schema => ({
+  operationId,
+  tags: ["panel"],
+  summary: "SPA bootstrap config: mode (admin / portal), principal, billing providers",
+  security: [],
+  responses: {
+    "200": {
+      description: "Panel config",
+      content: { "application/json": { schema: ref("PanelConfig") } },
+    },
+    "401": errorRes("A bad / expired portal token was presented"),
+  },
+});
 
 /**
  * Build the OpenAPI 3.1 document for the panel API. Every route of
@@ -645,38 +615,13 @@ const toOpenApiPath = (path: string): string => path.replace(/:([A-Za-z]+)/g, "{
  * ```
  */
 export function buildOpenApiDocument(options: OpenApiOptions = {}): Record<string, unknown> {
-  const paths: Record<string, Record<string, Schema>> = {};
-  const configOp: Schema = {
-    operationId: "getConfig",
-    tags: ["panel"],
-    summary: "SPA bootstrap config: mode (admin / portal), principal, billing providers",
-    security: [],
-    responses: {
-      "200": {
-        description: "Panel config",
-        content: { "application/json": { schema: ref("PanelConfig") } },
-      },
-      "401": errorRes("A bad / expired portal token was presented"),
-    },
-  };
-  for (const path of CONFIG_PATHS) {
-    paths[path] = {
-      get: { ...configOp, operationId: path === "/config" ? "getConfig" : "getApiConfig" },
-    };
-  }
-  for (const spec of API_ROUTES) {
-    const p = (paths[toOpenApiPath(spec.path)] ??= {});
-    p[spec.method.toLowerCase()] = operation(spec);
-  }
-  return {
-    openapi: "3.1.0",
-    info: {
-      title: options.title ?? "@xtandard/entitlements",
-      version: options.version ?? "1",
-      description:
-        "Entitlements, plans and usage metering: admin API, runtime API (server-to-server), customer portal API and billing webhook intake. Denials are not errors — runtime routes answer 200 with a CheckResult whose `allowed` is false.",
-    },
-    servers: [{ url: options.basePath || "/" }],
+  const doc = kitBuildOpenApiDocument({
+    routes: API_ROUTES,
+    title: options.title ?? "@xtandard/entitlements",
+    version: options.version ?? "1",
+    description:
+      "Entitlements, plans and usage metering: admin API, runtime API (server-to-server), customer portal API and billing webhook intake. Denials are not errors — runtime routes answer 200 with a CheckResult whose `allowed` is false.",
+    ...(options.basePath !== undefined ? { basePath: options.basePath } : {}),
     tags: [
       { name: "panel", description: "Bootstrap, health, this document" },
       { name: "catalog", description: "Features, plans, add-ons, pricing" },
@@ -690,18 +635,17 @@ export function buildOpenApiDocument(options: OpenApiOptions = {}): Record<strin
       { name: "portal", description: "Customer portal (portal token or admin preview)" },
       { name: "billing", description: "Provider webhook intake and reconcile" },
     ],
-    security: [{ basicAuth: [] }, { bearerAuth: [] }],
-    paths,
-    components: {
-      schemas,
-      securitySchemes: {
-        basicAuth: { type: "http", scheme: "basic" },
-        bearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          description: "Portal tokens (entpt_…) or host-issued bearer credentials.",
-        },
-      },
-    },
-  };
+    schemas,
+    bearerDescription: "Portal tokens (entpt_…) or host-issued bearer credentials.",
+    isMutatingAction,
+    readonlyStatus: 423,
+    operation,
+  });
+  const paths: Record<string, unknown> = {};
+  for (const path of CONFIG_PATHS) {
+    paths[path] = {
+      get: configOperation(path === "/config" ? "getConfig" : "getApiConfig"),
+    };
+  }
+  return { ...doc, paths: { ...paths, ...(doc.paths as Record<string, unknown>) } };
 }
