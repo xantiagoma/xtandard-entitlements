@@ -268,7 +268,10 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.elysia2.json",
     "check": "vp lint && vp fmt --check && bun run typecheck",
     "prepare": "husky || true",
-    "release": "changelogen --release --push"
+    "release": "changelogen --release --push",
+    "docs:dev": "cd site && bun install && bun run dev",
+    "docs:build": "cd site && bun install && bun run build",
+    "docs:preview": "cd site && bun run preview"
   },
   "dependencies": {
     "valibot": "^1.0.0",
