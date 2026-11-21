@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="96 98.0 832 628.0" width="832" height="628.0" role="img" aria-label="xtandard-entitlements">
+<title>xtandard-entitlements</title>
+<defs><linearGradient id="lime" x1="250" y1="250" x2="760" y2="740" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#A3E635"/><stop offset=".42" stop-color="#84CC16"/><stop offset="1" stop-color="#4D7C0F"/></linearGradient></defs>
+<g fill="none" stroke="#8B939C" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"><path d="M190 438L118 512L190 586"/><path d="M834 438L906 512L834 586"/></g>
+<path d="M250 300L395 300L560 512L395 724L250 724L415 512Z" fill="url(#lime)"/>
+<path d="M581.6 298L726.6 298L583.0 482.4L510.5 389.3Z" fill="url(#lime)"/>
+<path d="M580.0 724L725.0 724L583.0 541.6L510.5 634.7Z" fill="url(#lime)"/>
+<g fill="none" stroke-linecap="round" stroke-width="34">
+<path d="M528.9 247.1A150 150 0 0 1 749.9 136.7" stroke="url(#lime)"/>
+<path d="M786.9 165.5A150 150 0 0 1 825.9 247.1" stroke="#C4C9CE"/>
+</g>
+<path d="M677.4 268.0L743.7 182.8" stroke="url(#lime)" stroke-width="30" stroke-linecap="round"/>
+<circle cx="677.4" cy="268.0" r="36" fill="url(#lime)"/>
+</svg>

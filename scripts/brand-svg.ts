@@ -114,14 +114,16 @@ void needle;
 const limeGradient = (id: string, light = false) =>
   `<linearGradient id="${id}" x1="250" y1="250" x2="760" y2="740" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${light ? "#A3E635" : LIME_HI}"/><stop offset=".42" stop-color="${light ? "#84CC16" : LIME}"/><stop offset="1" stop-color="${light ? LIME_TEXT_LIGHT : LIME_DEEP}"/></linearGradient>`;
 
-function symbolBody(opts: { brackets?: boolean; mono?: string; track?: string } = {}): string {
+function symbolBody(
+  opts: { brackets?: boolean; mono?: string; track?: string; bracket?: string } = {},
+): string {
   const fill = opts.mono ?? "url(#lime)";
   const stroke = opts.mono ?? "url(#lime)";
   const track = opts.mono ? opts.mono : (opts.track ?? "#3A4046");
   const brackets =
     opts.brackets === false
       ? ""
-      : `<g fill="none" stroke="${opts.mono ?? BRACKET}" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"${opts.mono ? ' opacity=".6"' : ""}><path d="M190 438L118 512L190 586"/><path d="M834 438L906 512L834 586"/></g>`;
+      : `<g fill="none" stroke="${opts.mono ?? opts.bracket ?? BRACKET}" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"${opts.mono ? ' opacity=".6"' : ""}><path d="M190 438L118 512L190 586"/><path d="M834 438L906 512L834 586"/></g>`;
   return `${brackets}
 <path d="${chevron}" fill="${fill}"/>
 <path d="${upperArm}" fill="${fill}"/>
@@ -182,10 +184,13 @@ await write(
 );
 
 // symbol.svg — transparent symbol, cropped to its bounds
-await write(
-  "symbol.svg",
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SYM.x} ${f(SYM.y)} ${SYM.w} ${f(SYM.h)}" width="${SYM.w}" height="${f(SYM.h)}" role="img" aria-label="xtandard-entitlements">\n<title>xtandard-entitlements</title>\n<defs>${limeGradient("lime")}</defs>\n${symbolBody({ track: "#9AA1A8" })}\n</svg>`,
-);
+// symbol*.svg — the transparent mark (no tile), cropped to its bounds. symbol.svg is neutral
+// (mid-grey track and brackets, readable on both); -dark / -light are tuned per surface.
+const symbolSvg = (o: { track: string; bracket: string; light: boolean }) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SYM.x} ${f(SYM.y)} ${SYM.w} ${f(SYM.h)}" width="${SYM.w}" height="${f(SYM.h)}" role="img" aria-label="xtandard-entitlements">\n<title>xtandard-entitlements</title>\n<defs>${limeGradient("lime", o.light)}</defs>\n${symbolBody({ track: o.track, bracket: o.bracket })}\n</svg>`;
+await write("symbol.svg", symbolSvg({ track: "#9AA1A8", bracket: "#7A828A", light: false }));
+await write("symbol-dark.svg", symbolSvg({ track: "#3A4046", bracket: BRACKET, light: false }));
+await write("symbol-light.svg", symbolSvg({ track: "#C4C9CE", bracket: "#8B939C", light: true }));
 
 // ── lockups ─────────────────────────────────────────────────────────────────
 const PREFIX = outline("xtandard-", 100);
