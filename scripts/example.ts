@@ -93,6 +93,14 @@ export const EXAMPLES: Record<string, ExampleConfig> = {
     panelPath: "/billing",
     note: "Next.js App Router (next dev, installed on first run) — --demo calls the route handlers under Bun",
   },
+  "react-app": {
+    dir: "examples/react-app",
+    kind: "server",
+    run: ["bun", "src/start.ts"],
+    demo: ["bun", "src/demo.ts"],
+    preferredPort: 5190,
+    note: "a Vite React app (hooks, gates, meters, pricing + an embedded <CustomerPortal>) — starts its API server too",
+  },
   "stripe-webhooks": {
     dir: "examples/stripe-webhooks",
     kind: "server",

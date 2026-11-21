@@ -1,0 +1,76 @@
+/* The host app's own styles (the embed and the components bring theirs). */
+:root {
+  color-scheme: light dark;
+  --host-bg: #ffffff;
+  --host-fg: #18181b;
+  --host-line: rgb(127 127 127 / 0.25);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --host-bg: #0b0c0e;
+    --host-fg: #f4f4f5;
+  }
+}
+body {
+  margin: 0;
+  background: var(--host-bg);
+  color: var(--host-fg);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.host-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--host-line);
+}
+.host-bar a {
+  color: inherit;
+  opacity: 0.7;
+  text-decoration: none;
+}
+.host-bar a[aria-current="page"] {
+  opacity: 1;
+  font-weight: 600;
+}
+.host-org {
+  margin-left: auto;
+  font-size: 14px;
+}
+.workspace {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: grid;
+  gap: 24px;
+}
+.workspace h1 {
+  margin: 0;
+}
+.workspace h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+.muted {
+  opacity: 0.65;
+  margin: 4px 0 12px;
+}
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+.card {
+  border: 1px solid var(--host-line);
+  border-radius: 12px;
+  padding: 18px;
+}
+.cta {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--host-fg);
+  color: var(--host-bg);
+  font: inherit;
+  cursor: pointer;
+}

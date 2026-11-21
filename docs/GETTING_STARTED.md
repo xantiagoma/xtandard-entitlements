@@ -265,27 +265,113 @@ Polar, Paddle, Lemon Squeezy and better-auth: [Billing](./BILLING.md).
 ## 9. Gate your React UI
 
 `@xtandard/entitlements/react` reads the portal API with a portal token: hooks and small components
-for showing usage and hiding what a plan doesn't include. Client-side gates are UX — the server
-guard from step 4 is the enforcement.
+for showing usage and hiding what a plan doesn't include
+([`examples/react-app`](../examples/react-app), a Vite app — `bun run examples:react-app`).
+Client-side gates are UX — the server guard from step 4 is the enforcement.
 
-```tsx
-import {
-  EntitlementsProvider,
-  Gate,
-  UsageMeter,
-  UpgradePrompt,
-} from "@xtandard/entitlements/react";
+Your server mints the token after its own auth ([`src/api.ts`](../examples/react-app/src/api.ts)):
 
-<EntitlementsProvider baseUrl="/billing" token={portalToken}>
-  <UsageMeter feature="api_calls" />
-  <Gate feature="export_pdf" fallback={<UpgradePrompt feature="export_pdf" />}>
-    <ExportButton />
-  </Gate>
-</EntitlementsProvider>;
+```ts
+// Mint a short-lived portal token for the signed-in org (after YOUR auth).
+"/token": async (req: Request) => {
+  const org = orgOf(req);
+  if (!org) return Response.json({ error: "sign in first" }, { status: 401 });
+  const token = await createPortalToken(PORTAL_SECRET, org, { expiresIn: "15m" });
+  return Response.json({ token });
+},
 ```
 
-`<PricingTable>`, `useEntitlement` and the embeddable dashboard / portal
-(`@xtandard/entitlements/react/embed`): [UI](./UI.md).
+The provider loads that customer's entitlements once; a function `token` is called on every load, so
+a refresh never uses an expired one. Hooks and components typed by your catalog
+([`src/entitlements.ts`](../examples/react-app/src/entitlements.ts)):
+
+```ts
+import { createEntitlementsReact } from "@xtandard/entitlements/react";
+import type { Catalog } from "../../shared/catalog.ts";
+
+export const {
+  EntitlementsProvider,
+  Gate,
+  PricingTable,
+  UpgradePrompt,
+  UsageMeter,
+  useCustomer,
+  useEntitlement,
+  useEntitlements,
+} = createEntitlementsReact<Catalog>();
+```
+
+Then gate the UI ([`src/app.tsx`](../examples/react-app/src/app.tsx), trimmed):
+
+```tsx
+import "@xtandard/entitlements/react/components.css"; // optional default styles
+
+export function App({ org }: { org: string }) {
+  const token = React.useCallback(() => fetchPortalToken(org), [org]);
+  return (
+    <EntitlementsProvider key={org} baseUrl="/billing" token={token}>
+      <Workspace org={org} />
+    </EntitlementsProvider>
+  );
+}
+
+export function Workspace({ org }: { org: string }) {
+  const me = useCustomer();
+  const { refresh, checkout } = useEntitlements();
+  const upload = useEntitlement("max_upload_mb"); // .value: number
+
+  // Checkout when a billing provider is wired (`canCheckout`); otherwise the demo route.
+  const upgrade = async (plan: string) => {
+    if (me.canCheckout && checkout) return checkout(plan);
+    await post("/api/upgrade", org, { plan });
+    await refresh();
+  };
+
+  const generate = async () => {
+    await post("/api/generate", org); // the server consumes (and refuses with 402 at the limit)
+    await refresh(); // the provider doesn't count locally: reload after the server consumed
+  };
+
+  return (
+    <main>
+      <UsageMeter feature="api_calls" />
+      <Gate
+        feature="api_calls"
+        fallback={<UpgradePrompt feature="api_calls" onUpgrade={(p) => void upgrade(p)} />}
+      >
+        <button onClick={() => void generate()}>Generate</button>
+      </Gate>
+      <p>Uploads up to {upload.value} MB on your plan.</p>
+      <Gate
+        feature="export_pdf"
+        fallback={<UpgradePrompt feature="export_pdf" onUpgrade={(p) => void upgrade(p)} />}
+      >
+        <button>Export PDF</button>
+      </Gate>
+      <PricingTable onSelect={(plan) => void upgrade(plan)} />
+    </main>
+  );
+}
+```
+
+For a billing settings page, embed the whole customer portal instead
+([`src/portal.tsx`](../examples/react-app/src/portal.tsx)) — its stylesheet is scoped under
+`.xtandard-entitlements`, so it leaves your styles alone:
+
+```tsx
+import { CustomerPortal } from "@xtandard/entitlements/react/embed";
+import "@xtandard/entitlements/react/styles.css";
+
+function BillingPage({ org }: { org: string }) {
+  const [token, setToken] = React.useState<string>();
+  React.useEffect(() => {
+    void fetchPortalToken(org).then(setToken);
+  }, [org]);
+  return token ? <CustomerPortal apiBaseUrl="/billing" token={token} theme="inherit" /> : null;
+}
+```
+
+SSR / RSC (`initial`), every prop and the admin `<EntitlementsDashboard>`: [UI](./UI.md).
 
 ## Where to next
 
@@ -293,6 +379,7 @@ import {
 | ------------------------------------------------ | ------------------------------------------------------------------------------------- |
 | Your framework                                   | [Adapters](./ADAPTERS.md) · examples for Hono, Elysia 1/2, Express, Bun, Next.js      |
 | Real databases, split Postgres + Redis planes    | [Storage](./STORAGE.md) · [`examples/postgres-redis`](../examples/postgres-redis)     |
+| Hooks, components and embeds in a React app      | [UI](./UI.md) · [`examples/react-app`](../examples/react-app)                         |
 | Credits, reserve / settle, thresholds            | [Metering](./METERING.md) · [`examples/ai-credits`](../examples/ai-credits)           |
 | Rollouts that also respect plans (OpenFeature)   | [OpenFeature](./OPENFEATURE.md) · [`examples/flags-bridge`](../examples/flags-bridge) |
 | Audit trail, outbound webhooks on plan changes   | [Ecosystem](./ECOSYSTEM.md) · [Hooks](./HOOKS.md)                                     |
