@@ -157,11 +157,11 @@ order-safe intake, reconcile, and checkout / billing-portal link-outs:
 
 ```ts
 import { createBilling } from "@xtandard/entitlements/billing";
-import { stripe } from "@xtandard/entitlements/billing/stripe";
+import { createStripeProvider } from "@xtandard/entitlements/billing/stripe";
 
 const billing = createBilling(ent, {
   providers: [
-    stripe({
+    createStripeProvider({
       secretKey: process.env.STRIPE_SECRET_KEY!,
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
     }),
@@ -205,7 +205,7 @@ import {
   UpgradePrompt,
 } from "@xtandard/entitlements/react";
 
-<EntitlementsProvider source={{ baseUrl: "/billing", token: portalToken }}>
+<EntitlementsProvider baseUrl="/billing" token={portalToken}>
   <UsageMeter feature="api_calls" />
   <Gate feature="export_pdf" fallback={<UpgradePrompt feature="export_pdf" />}>
     <ExportButton />

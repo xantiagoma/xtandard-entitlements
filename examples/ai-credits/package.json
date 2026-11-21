@@ -1,0 +1,12 @@
+{
+  "name": "example-ai-credits",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/demo.ts",
+    "demo": "bun run src/demo.ts"
+  },
+  "dependencies": {
+    "@xtandard/entitlements": "file:../.."
+  }
+}

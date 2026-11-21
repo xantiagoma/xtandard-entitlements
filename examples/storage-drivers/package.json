@@ -1,0 +1,15 @@
+{
+  "name": "example-storage-drivers",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/demo.ts",
+    "demo": "bun run src/demo.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.0",
+    "@libsql/client": "0.15.15",
+    "@xtandard/entitlements": "file:../..",
+    "redis": "^5.0.0"
+  }
+}
