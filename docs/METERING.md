@@ -76,6 +76,9 @@ reservations are released by `ent.sweep()` (the panel can run it on an interval)
 Usage lives in a `CounterStore` ([ADR 0004](./ADR/0004-state-storage-and-counter-ports.md)), separate
 from the state storage that holds customers, so you can keep state in Postgres and counters in Redis.
 Every driver implements `add` as a single atomic backend operation; see [Storage](./STORAGE.md).
+Without a `counters` option the engine counts in the state storage itself (`createKvCounterStore`,
+a compare-and-swap loop — persistent and atomic, fine for modest traffic) when that storage
+supports compare-and-swap, and in memory otherwise (with a warning: usage would be lost on restart).
 
 ### Write-behind counters
 
