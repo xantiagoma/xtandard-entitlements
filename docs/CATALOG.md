@@ -75,7 +75,7 @@ and the portal), `metadata`. Metered and credits features also take `metering: "
 ([write-behind counters](./METERING.md#write-behind-counters)) and `thresholds` (default `[0.8, 1]`).
 
 **Resets** are `"day"`, `"week"`, `"month"`, `"quarter"`, `"year"` (UTC calendar windows),
-`"billing_period"` (the base subscription's period) or `"never"` ([ADR 0014](./ADR/0014-periods-and-resets.md)).
+`"billing_period"` (the base subscription's period; UTC calendar months without one) or `"never"` ([ADR 0014](./ADR/0014-periods-and-resets.md)).
 A reset is a new counter key — nothing runs on a schedule.
 
 **Credits**: a metered feature with `creditCost: { ai_credits: 0.01 }` charges 0.01 credits per unit.

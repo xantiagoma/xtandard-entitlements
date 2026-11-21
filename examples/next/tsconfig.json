@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    // In-repo only: run against the package source (no build). Copied out, delete
+    // these paths and `bun install` — the dependency resolves from node_modules.
+    "paths": {
+      "@xtandard/entitlements": ["../../src/index.ts"],
+      "@xtandard/entitlements/catalog": ["../../src/catalog.ts"],
+      "@xtandard/entitlements/next": ["../../src/entry-next.ts"],
+      "@xtandard/entitlements/storage/memory": ["../../src/entry-storage-memory.ts"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

@@ -25,6 +25,7 @@ import {
 } from "./catalog.ts";
 import type { CounterStore } from "./counters/contract.ts";
 import { createBufferedCounterStore, isBufferedCounterStore } from "./counters/buffered.ts";
+import { createKvCounterStore } from "./counters/kv.ts";
 import { createMemoryCounterStore } from "./counters/memory.ts";
 import { durationToMs, type Duration } from "./duration.ts";
 import {
@@ -146,7 +147,12 @@ export interface EntitlementsOptions<C extends AnyCatalog = AnyCatalog> {
   catalog: C;
   /** State storage (customers, reservations, links, activity). Default: in-memory. */
   storage?: EntitlementsStorage;
-  /** Counter store(s). Default: in-memory. */
+  /**
+   * Counter store(s). Default: `createKvCounterStore(storage)` when `storage` supports
+   * compare-and-swap (persistent, atomic), else in-memory (usage lost on restart; a warning is
+   * logged when a storage without CAS is given). Prefer a dedicated driver (Redis, Postgres, …)
+   * for hot meters.
+   */
   counters?: CountersOption;
   /** Customer snapshot cache (ADR 0003). `false` disables it (every call loads). */
   cache?: { ttl?: Duration; max?: number } | false;
@@ -474,9 +480,13 @@ export function createEntitlements<const C extends AnyCatalog>(
   const storage = options.storage ?? createMemoryStorage();
   const now = options.now ?? Date.now;
   const nowIso = () => new Date(now()).toISOString();
+  // Default counters: atomic and persistent alongside the state when the given storage can
+  // compare-and-swap; in-memory otherwise (usage is then lost on restart — warned below).
   const strictCounters =
     options.counters === undefined
-      ? createMemoryCounterStore({ now })
+      ? options.storage && isCompareAndSwap(options.storage)
+        ? createKvCounterStore(options.storage, { now })
+        : createMemoryCounterStore({ now })
       : "add" in options.counters
         ? options.counters
         : options.counters.default;
@@ -506,6 +516,11 @@ export function createEntitlements<const C extends AnyCatalog>(
     warn: (message: string, error?: unknown) =>
       console.warn(`[@xtandard/entitlements] ${message}`, ...(error === undefined ? [] : [error])),
   };
+  if (options.counters === undefined && options.storage && !isCompareAndSwap(options.storage)) {
+    logger.warn(
+      "no `counters` given and the storage has no compareAndSwap: usage is kept in memory and lost on restart. Pass a counter store (e.g. @xtandard/entitlements/counters/redis).",
+    );
+  }
 
   // --- snapshot cache --------------------------------------------------------
 

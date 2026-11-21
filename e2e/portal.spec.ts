@@ -30,7 +30,7 @@ test("checkout enabled: Upgrade links out to the provider", async ({ page }) => 
   const token = await tokenFor(page, "tailspin");
   await page.goto(`/#token=${token}`);
   await page.getByRole("button", { name: "Upgrade to Business" }).click();
-  await expect(page).toHaveURL(/\/e2e\/checkout\?customer=tailspin&plan=business/);
+  await expect(page).toHaveURL(/\/e2e\/checkout\?customer=tailspin&item=price_business_monthly/);
   await expect(page.getByRole("heading", { name: "Fake checkout" })).toBeVisible();
 });
 

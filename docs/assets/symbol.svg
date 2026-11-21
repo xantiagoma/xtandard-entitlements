@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="96 98.0 832 628.0" width="832" height="628.0" role="img" aria-label="xtandard-entitlements">
 <title>xtandard-entitlements</title>
 <defs><linearGradient id="lime" x1="250" y1="250" x2="760" y2="740" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#D9F99D"/><stop offset=".42" stop-color="#A3E635"/><stop offset="1" stop-color="#65A30D"/></linearGradient></defs>
-<g fill="none" stroke="#5B6167" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"><path d="M190 438L118 512L190 586"/><path d="M834 438L906 512L834 586"/></g>
+<g fill="none" stroke="#7A828A" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"><path d="M190 438L118 512L190 586"/><path d="M834 438L906 512L834 586"/></g>
 <path d="M250 300L395 300L560 512L395 724L250 724L415 512Z" fill="url(#lime)"/>
 <path d="M581.6 298L726.6 298L583.0 482.4L510.5 389.3Z" fill="url(#lime)"/>
 <path d="M580.0 724L725.0 724L583.0 541.6L510.5 634.7Z" fill="url(#lime)"/>

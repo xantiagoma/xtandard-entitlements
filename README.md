@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/lockup-horizontal-dark.png" />
-  <img src="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/lockup-horizontal-light.png" alt="xtandard-entitlements" width="560" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/lockup-horizontal-dark.svg" />
+  <img src="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/lockup-horizontal-light.svg" alt="xtandard-entitlements" width="560" />
 </picture>
 
 **Plans, entitlements and usage metering for TypeScript apps — as a library.**
@@ -157,11 +157,11 @@ order-safe intake, reconcile, and checkout / billing-portal link-outs:
 
 ```ts
 import { createBilling } from "@xtandard/entitlements/billing";
-import { stripe } from "@xtandard/entitlements/billing/stripe";
+import { createStripeProvider } from "@xtandard/entitlements/billing/stripe";
 
 const billing = createBilling(ent, {
   providers: [
-    stripe({
+    createStripeProvider({
       secretKey: process.env.STRIPE_SECRET_KEY!,
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
     }),
@@ -205,7 +205,7 @@ import {
   UpgradePrompt,
 } from "@xtandard/entitlements/react";
 
-<EntitlementsProvider source={{ baseUrl: "/billing", token: portalToken }}>
+<EntitlementsProvider baseUrl="/billing" token={portalToken}>
   <UsageMeter feature="api_calls" />
   <Gate feature="export_pdf" fallback={<UpgradePrompt feature="export_pdf" />}>
     <ExportButton />
@@ -279,19 +279,21 @@ the portal, Stripe webhooks, AI credits with reserve / settle, the flags bridge,
 
 `@xtandard/entitlements` is one of a family of open-source, MIT-licensed projects that share the xtandard name. They are independent of each other: use any of them on its own.
 
-| Project                                     | What it is                                                                                                                                                                                                      | Links                                                                                                                                                                                  |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`@xtandard/entitlements`** (this package) | An embeddable entitlements, plans and usage-metering engine: typed catalog, atomic metering, any billing provider, admin UI and customer portal                                                                 | [Docs](https://me.xantiagoma.com/xtandard-entitlements/) · [GitHub](https://github.com/xantiagoma/xtandard-entitlements) · [npm](https://www.npmjs.com/package/@xtandard/entitlements) |
-| **`@xtandard/lib`**                         | Lightweight, type-safe TypeScript utilities with a zero-dependency core                                                                                                                                         | [Docs](https://me.xantiagoma.com/xtandard/) · [GitHub](https://github.com/xantiagoma/xtandard) · [npm](https://www.npmjs.com/package/@xtandard/lib)                                    |
-| **`@xtandard/flags`**                       | A self-hosted, embeddable, OpenFeature-compatible feature-flag control plane with pluggable storage                                                                                                             | [Docs](https://me.xantiagoma.com/xtandard-flags/) · [GitHub](https://github.com/xantiagoma/xtandard-flags) · [npm](https://www.npmjs.com/package/@xtandard/flags)                      |
-| **`@xtandard/webhooks`**                    | A self-hosted, embeddable, Standard Webhooks-compliant outbound-webhooks control plane: a Svix alternative as a library                                                                                         | [Docs](https://me.xantiagoma.com/xtandard-webhooks/) · [GitHub](https://github.com/xantiagoma/xtandard-webhooks) · [npm](https://www.npmjs.com/package/@xtandard/webhooks)             |
-| **`@xtandard/xyte`**                        | A Zyte API-compatible `/v1/extract` client and server that runs on any proxy provider, or none                                                                                                                  | [Docs](https://me.xantiagoma.com/xyte/) · [GitHub](https://github.com/xantiagoma/xyte) · [npm](https://www.npmjs.com/package/@xtandard/xyte)                                           |
-| **xtandard-image**                          | A self-hosted image and video processing server in Go and libvips: imgproxy-compatible URLs plus the imgix, Cloudinary, ImageKit, Cloudflare and Thumbor dialects, with a TypeScript client (`@xtandard/image`) | [Docs](https://me.xantiagoma.com/xtandard-image/) · [GitHub](https://github.com/xantiagoma/xtandard-image) · [npm](https://www.npmjs.com/package/@xtandard/image)                      |
+| Project                                     | What it is                                                                                                                                                                                                      | Links                                                                                                                                                                      |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`@xtandard/entitlements`** (this package) | An embeddable entitlements, plans and usage-metering engine: typed catalog, atomic metering, any billing provider, admin UI and customer portal                                                                 | [Docs](https://me.xantiagoma.com/xtandard-entitlements/) · [GitHub](https://github.com/xantiagoma/xtandard-entitlements)                                                   |
+| **`@xtandard/lib`**                         | Lightweight, type-safe TypeScript utilities with a zero-dependency core                                                                                                                                         | [Docs](https://me.xantiagoma.com/xtandard/) · [GitHub](https://github.com/xantiagoma/xtandard) · [npm](https://www.npmjs.com/package/@xtandard/lib)                        |
+| **`@xtandard/flags`**                       | A self-hosted, embeddable, OpenFeature-compatible feature-flag control plane with pluggable storage                                                                                                             | [Docs](https://me.xantiagoma.com/xtandard-flags/) · [GitHub](https://github.com/xantiagoma/xtandard-flags) · [npm](https://www.npmjs.com/package/@xtandard/flags)          |
+| **`@xtandard/webhooks`**                    | A self-hosted, embeddable, Standard Webhooks-compliant outbound-webhooks control plane: a Svix alternative as a library                                                                                         | [Docs](https://me.xantiagoma.com/xtandard-webhooks/) · [GitHub](https://github.com/xantiagoma/xtandard-webhooks) · [npm](https://www.npmjs.com/package/@xtandard/webhooks) |
+| **`@xtandard/audit`**                       | A self-hosted, embeddable, tamper-evident audit-log control plane for B2B SaaS: a WorkOS Audit Logs alternative as a library                                                                                    | [Docs](https://me.xantiagoma.com/xtandard-audit/) · [GitHub](https://github.com/xantiagoma/xtandard-audit) · [npm](https://www.npmjs.com/package/@xtandard/audit)          |
+| **`@xtandard/links`**                       | Self-hosted, embeddable branded short links with click analytics, conversion attribution and deep links: a Dub / Bitly alternative as a library                                                                 | [Docs](https://me.xantiagoma.com/xtandard-links/) · [GitHub](https://github.com/xantiagoma/xtandard-links) · [npm](https://www.npmjs.com/package/@xtandard/links)          |
+| **`@xtandard/xyte`**                        | A Zyte API-compatible `/v1/extract` client and server that runs on any proxy provider, or none                                                                                                                  | [Docs](https://me.xantiagoma.com/xyte/) · [GitHub](https://github.com/xantiagoma/xyte) · [npm](https://www.npmjs.com/package/@xtandard/xyte)                               |
+| **xtandard-image**                          | A self-hosted image and video processing server in Go and libvips: imgproxy-compatible URLs plus the imgix, Cloudinary, ImageKit, Cloudflare and Thumbor dialects, with a TypeScript client (`@xtandard/image`) | [Docs](https://me.xantiagoma.com/xtandard-image/) · [GitHub](https://github.com/xantiagoma/xtandard-image) · [npm](https://www.npmjs.com/package/@xtandard/image)          |
 
 ### Related
 
 - [drizzle-cursor](https://github.com/xantiagoma/drizzle-cursor): cursor-based pagination for Drizzle ORM
-- [drizzle-audit](https://github.com/xantiagoma/drizzle-audit): configurable audit logging for Drizzle ORM
+- [drizzle-audit](https://github.com/xantiagoma/drizzle-audit): configurable audit logging for Drizzle ORM — pairs with `@xtandard/audit/drizzle-audit` to give customers a verifiable log
 
 ## License
 

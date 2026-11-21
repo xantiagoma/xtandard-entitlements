@@ -9,15 +9,16 @@
  * Test-only routes (outside the panel):
  *   GET /healthcheck                         → 200 (readiness probe; the panel's own)
  *   GET /e2e/portal-token?customer=&scope=   → { token } (scope=read → view-only portal)
- *   GET /e2e/checkout?customer=&plan=        → the fake provider's checkout page
- *   GET /e2e/billing-portal?customer=        → the fake provider's billing portal page
+ *   GET /e2e/checkout?customer=&item=        → the fake provider's checkout page
+ *   GET /e2e/billing-portal?customer=&account= → the fake provider's billing portal page
  *   GET /e2e/embed?view=&theme=&host=        → a host page mounting the built React
  *                                              embeds / hooks (view: dashboard | portal | gates;
  *                                              host: class | attr | none)
  */
 
 import { createFetchHandler, createPortalToken } from "../src/index.ts";
-import type { EntitlementsBilling } from "../src/billing/contract.ts";
+import { createBilling } from "../src/entry-billing.ts";
+import type { BillingProvider } from "../src/billing/contract.ts";
 import { createDemoEngine } from "../scripts/seed-demo.ts";
 
 const PORT = Number(process.env.PORT ?? 3411);
@@ -26,28 +27,24 @@ const ROOT = new URL("..", import.meta.url);
 
 const { ent } = await createDemoEngine();
 
-/** A billing provider that links out to local fake pages and records calls. */
-const billing: EntitlementsBilling = {
-  providers: ["fake"],
-  canCheckout: true,
-  canManage: true,
-  async handleWebhook() {
-    return { outcome: "ignored", events: 0 };
-  },
-  async apply() {
-    return "ignored";
-  },
-  async reconcile() {
-    return [];
-  },
-  async createCheckout(customer, input) {
-    const q = new URLSearchParams({ customer, plan: input.plan });
+/**
+ * Stripe- and Polar-shaped providers whose link-outs land on local fake pages,
+ * run through the real billing intake (`createBilling`): checkout resolves the
+ * catalog's provider item id, manage needs the customer's linked account.
+ */
+const fakeProvider = (id: string): BillingProvider => ({
+  id,
+  async createCheckout(input) {
+    const q = new URLSearchParams({ customer: input.customer, item: input.item });
+    if (input.trialDays) q.set("trial", String(input.trialDays));
     return { url: `/e2e/checkout?${q}` };
   },
-  async createPortalSession(customer) {
-    return { url: `/e2e/billing-portal?${new URLSearchParams({ customer })}` };
+  async createPortalSession(input) {
+    const q = new URLSearchParams({ customer: input.customer, account: input.providerCustomer });
+    return { url: `/e2e/billing-portal?${q}` };
   },
-};
+});
+const billing = createBilling(ent, { providers: [fakeProvider("stripe"), fakeProvider("polar")] });
 
 const { fetch: panelFetch } = createFetchHandler({
   entitlements: ent,
@@ -126,7 +123,7 @@ Bun.serve({
       case "/e2e/checkout":
         return fakePage(
           "Fake checkout",
-          `Checkout for ${url.searchParams.get("customer")} → plan ${url.searchParams.get("plan")}`,
+          `Checkout for ${url.searchParams.get("customer")} → ${url.searchParams.get("item")}`,
         );
       case "/e2e/billing-portal":
         return fakePage("Fake billing portal", `Billing for ${url.searchParams.get("customer")}`);

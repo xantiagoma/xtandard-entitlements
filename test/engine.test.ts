@@ -117,6 +117,26 @@ describe("consume", () => {
     });
   });
 
+  it("billing_period without a subscription is a stable calendar month (unknown customers too)", async () => {
+    const { defineCatalog, feature } = await import("../src/catalog.ts");
+    const c = defineCatalog({
+      features: { credits: feature.credits({ reset: "billing_period" }) },
+      plans: { free: { default: true, features: { credits: 100 } } },
+    });
+    const { ent, clock } = createTestEntitlements({ catalog: c, now: "2026-11-20T12:00:00Z" });
+    await ent.consume("never_written", "credits", 10);
+    clock.advance("6m");
+    expect(await ent.check("never_written", "credits")).toMatchObject({
+      used: 10,
+      resetsAt: "2026-12-01T00:00:00.000Z",
+    });
+    await ent.updateCustomer("never_written", { name: "Now stored" }); // first write must not reset usage
+    clock.advance("1h");
+    expect((await ent.check("never_written", "credits")).used).toBe(10);
+    clock.set("2026-12-01T00:00:01Z");
+    expect((await ent.check("never_written", "credits")).used).toBe(0);
+  });
+
   it("drains allowance, then one-off grants by priority, then refunds on failure", async () => {
     const { ent } = setup();
     await ent.grant("org", { feature: "api_calls", amount: 50, priority: 1 });
@@ -558,6 +578,35 @@ describe("control plane", () => {
       { date: "2026-11-21", value: 7 },
     ]);
     await ent.close();
+  });
+});
+
+describe("default counters", () => {
+  it("persist in a compare-and-swap storage when no counters are given", async () => {
+    const storage = createMemoryStorage();
+    const a = createEntitlements({ catalog, storage, usageSeries: false });
+    await a.consume("org", "api_calls", 7);
+    const b = createEntitlements({ catalog, storage, usageSeries: false }); // "after a restart"
+    expect((await b.check("org", "api_calls")).used).toBe(7);
+  });
+
+  it("fall back to memory with a warning for storage without CAS", async () => {
+    const inner = createMemoryStorage();
+    const plain: EntitlementsStorage = {
+      getItem: (k) => inner.getItem(k),
+      setItem: (k, v) => inner.setItem(k, v),
+      removeItem: (k) => inner.removeItem(k),
+      getKeys: (p) => inner.getKeys(p),
+    };
+    const warnings: string[] = [];
+    const ent = createEntitlements({
+      catalog,
+      storage: plain,
+      usageSeries: false,
+      logger: { warn: (m) => void warnings.push(m) },
+    });
+    expect(warnings[0]).toMatch(/lost on restart/);
+    expect((await ent.consume("org", "api_calls", 2)).used).toBe(2);
   });
 });
 

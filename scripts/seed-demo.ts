@@ -612,6 +612,14 @@ export async function seedDemo(
         );
       } else {
         const ref = `sub_${c.id.replace(/[^a-z0-9]/g, "").slice(0, 10)}${Math.floor(random() * 1e6)}`;
+        // The billing account behind the subscription (portal "Manage billing").
+        at(signup + 4 * 60_000, () =>
+          ent.link(
+            c.id,
+            provider,
+            `${provider === "polar" ? "pc" : "cus"}_${c.id.replace(/[^a-z0-9]/g, "")}`,
+          ),
+        );
         at(signup + 5 * 60_000, () =>
           ent.upsertSubscription(
             c.id,

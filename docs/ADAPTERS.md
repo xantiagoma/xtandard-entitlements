@@ -174,6 +174,25 @@ export const POST = withEntitlement(
 Route handlers run on the Node.js runtime (the panel serves static files from `dist/ui`). Keep one
 engine per process — define the panel in a module and import it, don't build it per request.
 
+Bundlers rewrite `import.meta.url` (Next's Turbopack and webpack do), so the panel cannot find its
+bundled UI next to its own module there. Pass the directory explicitly:
+
+```ts
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
+
+const pkg = dirname(createRequire(import.meta.url).resolve("@xtandard/entitlements/package.json"));
+export const billing = entitlementsPanel({
+  catalog,
+  storage,
+  counters,
+  basePath: "/billing",
+  uiDir: join(pkg, "dist/ui"),
+});
+```
+
+(`examples/next` does this.)
+
 ## Sharing one engine
 
 The panel and your own routes should share **one** engine (one snapshot cache, one set of hooks):

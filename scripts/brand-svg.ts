@@ -30,6 +30,8 @@ interface Outline {
   /** `<path>` elements positioned on a baseline at y = 0. */
   body: string;
   width: number;
+  /** Highest point of the glyphs (negative: above the baseline). */
+  top: number;
 }
 
 function outline(text: string, size: number, weight = 900): Outline {
@@ -50,15 +52,19 @@ function outline(text: string, size: number, weight = 900): Outline {
   }
   const baseline = Number(/<use[^>]*y="([\d.]+)"/.exec(svg)?.[1] ?? 0);
   let body = "";
+  let top = 0;
   for (const m of svg.matchAll(/<use xlink:href="#(glyph-[\d-]+)" x="([\d.]+)" y="([\d.]+)"\/>/g)) {
     const d = glyphs.get(m[1]!);
     if (!d) continue;
     const x = Number(m[2]);
     const y = Number(m[3]) - baseline;
     body += `<path transform="translate(${x.toFixed(2)} ${y.toFixed(2)})" d="${d}"/>`;
+    // hb-view writes absolute M/L/C/Z with x,y pairs: every second number is a y.
+    const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+    for (let i = 1; i < nums.length; i += 2) top = Math.min(top, nums[i]! + y);
   }
   const width = Number(/width="([\d.]+)"/.exec(svg)?.[1] ?? 0);
-  return { body, width };
+  return { body, width, top };
 }
 
 // ── the symbol (1024 grid) ──────────────────────────────────────────────────
@@ -114,14 +120,16 @@ void needle;
 const limeGradient = (id: string, light = false) =>
   `<linearGradient id="${id}" x1="250" y1="250" x2="760" y2="740" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${light ? "#A3E635" : LIME_HI}"/><stop offset=".42" stop-color="${light ? "#84CC16" : LIME}"/><stop offset="1" stop-color="${light ? LIME_TEXT_LIGHT : LIME_DEEP}"/></linearGradient>`;
 
-function symbolBody(opts: { brackets?: boolean; mono?: string; track?: string } = {}): string {
+function symbolBody(
+  opts: { brackets?: boolean; mono?: string; track?: string; bracket?: string } = {},
+): string {
   const fill = opts.mono ?? "url(#lime)";
   const stroke = opts.mono ?? "url(#lime)";
   const track = opts.mono ? opts.mono : (opts.track ?? "#3A4046");
   const brackets =
     opts.brackets === false
       ? ""
-      : `<g fill="none" stroke="${opts.mono ?? BRACKET}" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"${opts.mono ? ' opacity=".6"' : ""}><path d="M190 438L118 512L190 586"/><path d="M834 438L906 512L834 586"/></g>`;
+      : `<g fill="none" stroke="${opts.mono ?? opts.bracket ?? BRACKET}" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"${opts.mono ? ' opacity=".6"' : ""}><path d="M190 438L118 512L190 586"/><path d="M834 438L906 512L834 586"/></g>`;
   return `${brackets}
 <path d="${chevron}" fill="${fill}"/>
 <path d="${upperArm}" fill="${fill}"/>
@@ -182,12 +190,19 @@ await write(
 );
 
 // symbol.svg — transparent symbol, cropped to its bounds
-await write(
-  "symbol.svg",
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SYM.x} ${f(SYM.y)} ${SYM.w} ${f(SYM.h)}" width="${SYM.w}" height="${f(SYM.h)}" role="img" aria-label="xtandard-entitlements">\n<title>xtandard-entitlements</title>\n<defs>${limeGradient("lime")}</defs>\n${symbolBody({ track: "#9AA1A8" })}\n</svg>`,
-);
+// symbol*.svg — the transparent mark (no tile), cropped to its bounds. symbol.svg is neutral
+// (mid-grey track and brackets, readable on both); -dark / -light are tuned per surface.
+const symbolSvg = (o: { track: string; bracket: string; light: boolean }) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SYM.x} ${f(SYM.y)} ${SYM.w} ${f(SYM.h)}" width="${SYM.w}" height="${f(SYM.h)}" role="img" aria-label="xtandard-entitlements">\n<title>xtandard-entitlements</title>\n<defs>${limeGradient("lime", o.light)}</defs>\n${symbolBody({ track: o.track, bracket: o.bracket })}\n</svg>`;
+await write("symbol.svg", symbolSvg({ track: "#9AA1A8", bracket: "#7A828A", light: false }));
+await write("symbol-dark.svg", symbolSvg({ track: "#3A4046", bracket: BRACKET, light: false }));
+await write("symbol-light.svg", symbolSvg({ track: "#C4C9CE", bracket: "#8B939C", light: true }));
 
 // ── lockups ─────────────────────────────────────────────────────────────────
+/** Urbanist's cap height at the 100-unit wordmark size (OS/2 sCapHeight 0.7 em). */
+const CAP_HEIGHT = 70;
+/** Room below the baseline for descenders (Urbanist's descender at 100 units, as in the siblings). */
+const DESCENT = 26;
 const PREFIX = outline("xtandard-", 100);
 const NAME = outline("entitlements", 100);
 const wordGradient = (light: boolean) =>
@@ -195,19 +210,23 @@ const wordGradient = (light: boolean) =>
 
 function horizontal(mode: "dark" | "light" | "white" | "black"): string {
   const mono = mode === "white" ? "#FFFFFF" : mode === "black" ? "#000000" : undefined;
-  const symH = 150; // mark height in lockup units (the X's base sits on the text baseline)
+  const symH = 150; // mark height in lockup units
   const s = symH / MARK.h;
   const symW = MARK.w * s;
   const gap = 26;
-  const baseline = 4 + (724 - MARK.y) * s;
+  // Shared xtandard rule: the mark's vertical centre (its full bounds) sits on the wordmark's
+  // optical centre, half Urbanist's cap height (OS/2 sCapHeight 0.7 em = 70 units) above the
+  // baseline; descenders are ignored but stay inside the canvas.
+  const symTop = 4;
+  const baseline = symTop + symH / 2 + CAP_HEIGHT / 2;
+  const h = Math.max(symH + 8, baseline + DESCENT + 4);
   const prefixFill = mono ?? (mode === "dark" ? PAPER : INK);
   const nameFill = mono ?? "url(#word)";
   const w = symW + gap + PREFIX.width + NAME.width + 4;
-  const h = symH + 8;
   const track = mode === "light" ? "#C4C9CE" : "#3A4046";
   const label = mono ? `xtandard-entitlements (${mode})` : "xtandard-entitlements";
   return `${header(w, h, label)}<defs>${limeGradient("lime", mode === "light")}${wordGradient(mode === "light")}</defs>
-<g transform="translate(0 4) scale(${s.toFixed(5)}) translate(${-MARK.x} ${f(-MARK.y)})">${symbolBody({ brackets: false, track, ...(mono ? { mono } : {}) })}</g>
+<g transform="translate(0 ${symTop}) scale(${s.toFixed(5)}) translate(${-MARK.x} ${f(-MARK.y)})">${symbolBody({ brackets: false, track, ...(mono ? { mono } : {}) })}</g>
 <g transform="translate(${f(symW + gap)} ${f(baseline)})" fill="${prefixFill}">${PREFIX.body}</g>
 <g transform="translate(${f(symW + gap + PREFIX.width)} ${f(baseline)})" fill="${nameFill}">${NAME.body}</g>
 </svg>`;

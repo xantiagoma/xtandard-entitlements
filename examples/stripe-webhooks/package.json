@@ -1,0 +1,13 @@
+{
+  "name": "example-stripe-webhooks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "send": "bun run src/send.ts",
+    "demo": "bun run src/demo.ts"
+  },
+  "dependencies": {
+    "@xtandard/entitlements": "file:../.."
+  }
+}
