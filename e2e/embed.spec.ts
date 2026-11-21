@@ -58,7 +58,7 @@ test("dashboard embed follows a live host theme change (data-theme)", async ({ p
 
 test("dashboard embed navigates in memory without touching the host URL", async ({ page }) => {
   await page.goto("/e2e/embed?view=dashboard&theme=light");
-  await page.getByRole("button", { name: "Customers" }).click();
+  await page.getByRole("button", { name: "Customers", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Customers" })).toBeVisible();
   expect(new URL(page.url()).pathname).toBe("/e2e/embed");
   // Scoped stylesheet: the host bar keeps its own font weight / no panel leakage.
@@ -68,7 +68,7 @@ test("dashboard embed navigates in memory without touching the host URL", async 
 test("forced dark theme + dialog stays inside the scoped wrapper", async ({ page }) => {
   await page.goto("/e2e/embed?view=dashboard&theme=dark");
   await expectPanelTheme(page, "dark", "Overview");
-  await page.getByRole("button", { name: "Customers" }).click();
+  await page.getByRole("button", { name: "Customers", exact: true }).click();
   await page.getByText("Lucerne Publishing").click();
   await page.getByRole("button", { name: "Add grant" }).click();
   const dialog = page.getByRole("dialog");

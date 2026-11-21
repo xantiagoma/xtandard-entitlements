@@ -285,6 +285,18 @@ describe("<UsageMeter>", () => {
   });
 });
 
+test("<UsageMeter> for a feature not in the plan says so", async () => {
+  const data = await free();
+  const { container } = render(
+    <EntitlementsProvider initial={data}>
+      <UsageMeter feature="ai_credits" />
+    </EntitlementsProvider>,
+  );
+  expect(screen.getByText("Not included")).toBeTruthy();
+  expect(container.querySelector("[data-level=disabled]")).toBeTruthy();
+  expect(container.querySelector("[data-part=reset]")).toBeNull();
+});
+
 describe("<PricingTable>", () => {
   test("from the provider: current plan marked, relations, onSelect", async () => {
     const data = await portalData(
@@ -309,6 +321,9 @@ describe("<PricingTable>", () => {
     expect(onSelect).toHaveBeenCalledWith("business");
     expect(screen.getAllByText("14-day free trial")).toHaveLength(1);
     expect(screen.getAllByText("$29 / month")).toHaveLength(1);
+    // Not-included numeric features show just their name.
+    const freeCard = screen.getByRole("article", { name: "Free plan" });
+    expect(freeCard.querySelector("[data-feature=ai_credits]")?.textContent).toBe("AI credits");
   });
 
   test("from a catalog, no provider, custom labels, group filter", () => {

@@ -5,7 +5,8 @@
  *   bun run build && bun run screenshots
  *
  * Boots the e2e server (panel + demo seed + fake billing) on a spare port,
- * drives Chromium with Playwright, then stops the server.
+ * drives Chromium with Playwright, then stops the server. `BASE_URL=…` targets
+ * an already-running one instead (e.g. `bun run demo`).
  *
  * @module
  */
@@ -13,14 +14,16 @@
 import { chromium, type Page } from "playwright";
 
 const PORT = process.env.PORT ?? "3499";
-const BASE = `http://localhost:${PORT}`;
+const BASE = process.env.BASE_URL?.replace(/\/$/, "") ?? `http://localhost:${PORT}`;
 const OUT = new URL("../docs/assets/", import.meta.url);
 
-const server = Bun.spawn(["bun", new URL("../e2e/server.ts", import.meta.url).pathname], {
-  env: { ...process.env, PORT },
-  stdout: "ignore",
-  stderr: "inherit",
-});
+const server = process.env.BASE_URL
+  ? null
+  : Bun.spawn(["bun", new URL("../e2e/server.ts", import.meta.url).pathname], {
+      env: { ...process.env, PORT },
+      stdout: "ignore",
+      stderr: "inherit",
+    });
 
 async function waitForServer(timeoutMs = 30_000): Promise<void> {
   const start = Date.now();
@@ -96,5 +99,5 @@ try {
   }
   await browser.close();
 } finally {
-  server.kill();
+  server?.kill();
 }

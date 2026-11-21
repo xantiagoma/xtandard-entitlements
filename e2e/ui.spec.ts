@@ -80,10 +80,10 @@ test("adds a grant (with validation) and revokes it", async ({ page }) => {
   await page.getByRole("button", { name: "Add grant" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Feature").selectOption("ai_credits");
-  await dialog.getByLabel("Amount").fill("-5");
+  await dialog.getByLabel("Amount", { exact: true }).fill("-5");
   await dialog.getByRole("button", { name: "Add grant" }).click();
   await expect(dialog.getByText("The amount must be greater than zero.")).toBeVisible();
-  await dialog.getByLabel("Amount").fill("2,500");
+  await dialog.getByLabel("Amount", { exact: true }).fill("2,500");
   await dialog.getByLabel("Reason").fill("Hackathon sponsor");
   await dialog.getByRole("button", { name: "Add grant" }).click();
   await expect(page.getByText("Granted 2,500 credits of AI credits")).toBeVisible();

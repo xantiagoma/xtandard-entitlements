@@ -4,7 +4,7 @@ import { useHashLocation } from "wouter/use-hash-location";
 import { useQuery } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import type { PanelConfig } from "./types.ts";
-import { getConfig } from "./api.ts";
+import { getApiToken, getConfig } from "./api.ts";
 import { ThemeToggle } from "./components/ThemeToggle.tsx";
 import { BrandMark } from "./components/ent-bits.tsx";
 import { OverviewView } from "./views/OverviewView.tsx";
@@ -91,7 +91,9 @@ function AppShell({
   const config = configQuery.data ?? (bootstrap as PanelConfig);
   const readonly = config?.readonly ?? false;
   // Portal mode: the request carries a portal token — reduced, single-page chrome.
-  const portal = forcePortal || config?.mode === "portal";
+  // A token we were handed means portal even when /config rejects it (expired /
+  // invalid): the portal page then shows the error instead of the admin chrome.
+  const portal = forcePortal || config?.mode === "portal" || getApiToken() !== null;
 
   // Branding: explicit props win, then server /config, then defaults.
   const brandTitle = config?.title || (portal ? "Billing" : "Entitlements");

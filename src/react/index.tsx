@@ -336,8 +336,10 @@ export function UsageMeter<F extends string = string>({
     feature;
   const used = state.used ?? 0;
   const limit = state.limit;
-  const valueText =
-    limit === null
+  const notIncluded = !state.loading && !state.enabled;
+  const valueText = notIncluded
+    ? "Not included"
+    : limit === null
       ? `${format(used)} used`
       : limit === undefined
         ? "—"
@@ -369,7 +371,7 @@ export function UsageMeter<F extends string = string>({
       >
         <div data-part="fill" style={{ width: `${pct}%` }} />
       </div>
-      {hideText || !state.resetsAt ? null : (
+      {hideText || notIncluded || !state.resetsAt ? null : (
         <span data-part="reset">
           Resets{" "}
           <time dateTime={state.resetsAt}>{new Date(state.resetsAt).toLocaleDateString()}</time>
@@ -491,7 +493,7 @@ export function PricingTable<P extends string = string>({
                 if (!cell) return null;
                 return (
                   <li key={f.key} data-feature={f.key} data-included={cell.included}>
-                    {f.kind === "boolean" ? f.name : `${cell.label} · ${f.name}`}
+                    {f.kind === "boolean" || !cell.included ? f.name : `${cell.label} · ${f.name}`}
                   </li>
                 );
               })}
