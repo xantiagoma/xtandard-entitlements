@@ -26,7 +26,11 @@ export const branch = "main";
  * domain. pages.yml passes what actions/configure-pages reports (SITE_ORIGIN, SITE_BASE), so a
  * domain change needs no code change.
  */
-export const siteOrigin = process.env.SITE_ORIGIN || "https://me.xantiagoma.com";
+// actions/configure-pages reports the origin as http://; the site is served over https only.
+export const siteOrigin = (process.env.SITE_ORIGIN || "https://me.xantiagoma.com").replace(
+  /^http:\/\//,
+  "https://",
+);
 export const siteBase = (process.env.SITE_BASE || "/xtandard-entitlements").replace(/\/+$/, "");
 
 // ---- entry points ---------------------------------------------------------------------------
