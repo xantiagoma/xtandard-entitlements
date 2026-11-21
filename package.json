@@ -36,7 +36,7 @@
     "url": "git+https://github.com/xantiagoma/xtandard-entitlements.git"
   },
   "bin": {
-    "xtandard-entitlements": "./bin/xtandard-entitlements.mjs"
+    "xtandard-entitlements": "bin/xtandard-entitlements.mjs"
   },
   "files": [
     "dist",
