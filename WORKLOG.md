@@ -4,6 +4,23 @@ Reverse-chronological. Each entry: timestamp · task · files · tests · blocke
 
 ---
 
+## 2026-11-21 — billing, examples, UI merged; brand rules
+
+- PR #5 billing + flags bridge + audit/webhooks bridges; PR #9 examples (10 runnable, demos) + GETTING_STARTED
+  (ADR 0017); PR #17 admin UI + customer portal + /react + /react/embed, Playwright e2e (CI job added),
+  12 light/dark screenshots.
+- Engine fixes from the examples worker: #8 billing_period without a base subscription = UTC calendar months
+  (never-written customers reset every call); #10 default counters = KV over CAS storage (memory lost usage
+  on restart) + Next.js uiDir docs.
+- Brand per the user: #11 SVG only on pages (PNG logos deleted), #13/#14 no tile on pages (hero = stacked
+  lockups light/dark like audit), #15/#16 horizontal-lockup centring = shared family rule
+  (baseline − capHeight/2). #12 audit + links in the ecosystem table.
+- Lesson: `gh pr merge --delete-branch` removes the local branch and its worktree metadata; a worker still
+  in that worktree is left in a dead directory — relaunch workers on fresh worktrees after merging.
+- Next: react-app example (ent-react-app), final gate, v0.1.0 prep, READY TO PUBLISH, final report.
+
+---
+
 ## 2026-11-21 — merges via PRs, docs site live
 
 - Brand kit (`docs/assets`, `docs/BRAND.md`, `scripts/brand-svg.ts` + `brand-assets.sh`): lime X whose upper

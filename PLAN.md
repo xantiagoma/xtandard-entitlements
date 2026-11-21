@@ -260,3 +260,4 @@ run test:e2e` green locally and in GitHub Actions.
 | 0014 | Periods and resets: UTC calendar windows or billing-period anchored ★                 |
 | 0015 | Non-goals: invoicing, tax, dunning, payments ★                                        |
 | 0016 | Storage and counter driver deviations from the siblings                               |
+| 0017 | Examples run from source (tsconfig paths → src/), no per-example install ★            |
