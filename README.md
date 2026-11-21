@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/lockup-horizontal-dark.png" />
-  <img src="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/lockup-horizontal-light.png" alt="xtandard-entitlements" width="560" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/lockup-horizontal-dark.svg" />
+  <img src="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/lockup-horizontal-light.svg" alt="xtandard-entitlements" width="560" />
 </picture>
 
 **Plans, entitlements and usage metering for TypeScript apps — as a library.**
