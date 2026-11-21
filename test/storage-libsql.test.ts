@@ -4,11 +4,7 @@
  */
 import { createClient } from "@libsql/client";
 import { afterEach, describe, expect, test } from "vitest";
-import {
-  createLibsqlStorage,
-  type LibsqlClientLike,
-  type LibsqlEntitlementsStorage,
-} from "../src/storage/libsql.ts";
+import { createLibsqlStorage, type LibsqlEntitlementsStorage } from "../src/storage/libsql.ts";
 import { runStorageContractTests } from "./storage-contract.ts";
 
 const open: LibsqlEntitlementsStorage[] = [];
@@ -30,8 +26,7 @@ runStorageContractTests("libsql (:memory:)", make, {
 describe("libsql storage specifics", () => {
   test("defaults to the xtandard_entitlements_kv table", async () => {
     const client = createClient({ url: ":memory:" });
-    // TODO(kit#24): drop the cast once `LibsqlClientLike.batch` accepts a real Client.
-    const storage = createLibsqlStorage({ client: client as unknown as LibsqlClientLike });
+    const storage = createLibsqlStorage({ client });
     await storage.setItem("ent/k", { b: 1, a: 2 });
     const { rows } = await client.execute("SELECT key, value FROM xtandard_entitlements_kv");
     expect(rows.map((r) => [r.key, r.value])).toEqual([["ent/k", '{"a":2,"b":1}']]);

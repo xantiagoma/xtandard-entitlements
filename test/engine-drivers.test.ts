@@ -18,7 +18,7 @@ import { createPostgresCounterStore } from "../src/counters/postgres.ts";
 import { createRedisCounterStore } from "../src/counters/redis.ts";
 import { pgCountersTable } from "../src/drizzle/pg.ts";
 import { isCompareAndSwap, type EntitlementsStorage } from "../src/storage/contract.ts";
-import { createLibsqlStorage, type LibsqlClientLike } from "../src/storage/libsql.ts";
+import { createLibsqlStorage } from "../src/storage/libsql.ts";
 import { createPostgresStorage } from "../src/storage/postgres.ts";
 import { createTestEntitlements } from "../src/testing.ts";
 import { createTableSql } from "./drizzle-ddl.ts";
@@ -41,8 +41,7 @@ const drivers: Array<[string, Make]> = [
   [
     "libsql counters + libsql storage",
     async () => {
-      // TODO(kit#24): drop the cast once `LibsqlClientLike.batch` accepts a real Client.
-      const client = createClient({ url: ":memory:" }) as unknown as LibsqlClientLike;
+      const client = createClient({ url: ":memory:" });
       return {
         counters: createLibsqlCounterStore({ client }),
         storage: createLibsqlStorage({ client }),
