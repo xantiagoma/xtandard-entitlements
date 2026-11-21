@@ -217,7 +217,8 @@ export const portalManageSchema = v.strictObject({ returnUrl: v.optional(v.strin
 function toIssues(issues: readonly v.BaseIssue<unknown>[]): ValidationIssue[] {
   return issues.map((issue) => ({
     path: (issue.path ?? []).map((p) => String(p.key)).join("."),
-    message: issue.message,
+    // Strict objects report extra keys as "Expected never" — say what it means.
+    message: issue.expected === "never" ? "unknown field" : issue.message,
   }));
 }
 

@@ -229,6 +229,8 @@ const noContent = (): Response => new Response(null, { status: 204 });
 const error = (status: number, message: string, extra?: Record<string, unknown>): Response =>
   json({ error: message, ...extra }, status);
 
+const VALIDATION = { code: "VALIDATION" } as const;
+
 /** Thrown inside the router to short-circuit with a response. */
 class HttpError extends Error {
   constructor(
@@ -1181,7 +1183,7 @@ export async function handleApiRequest(
           try {
             return JSON.parse(text) as unknown;
           } catch {
-            throw new HttpError(400, "Invalid JSON body");
+            throw new HttpError(400, "Invalid JSON body", VALIDATION);
           }
         });
         return parseInput(schema, await raw);
@@ -1193,7 +1195,7 @@ export async function handleApiRequest(
         return ctx.auth.challenge?.(request) ?? error(401, "Unauthorized");
       }
       if (route.tag === "portal" && portalCustomer === undefined) {
-        throw new HttpError(400, "Missing ?customer= (admin preview of a portal)");
+        throw new HttpError(400, "Missing ?customer= (admin preview of a portal)", VALIDATION);
       }
       const resource = await route.resource!(call);
       if (who.portal) {
@@ -1269,7 +1271,7 @@ export function mapError(err: unknown): Response {
       ...(Array.isArray(issues) ? { issues } : {}),
     });
   }
-  if (err instanceof SyntaxError) return error(400, "Invalid JSON body");
+  if (err instanceof SyntaxError) return error(400, "Invalid JSON body", VALIDATION);
   const message = err instanceof Error ? err.message : "Internal error";
   return error(500, message);
 }
