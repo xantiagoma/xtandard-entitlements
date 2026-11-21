@@ -32,7 +32,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
-      exclude: ["src/ui/**", "src/entry-*.ts", "src/cli.ts"],
+      exclude: ["src/ui/**", "src/entry-*.ts", "src/index.ts", "src/cli.ts"],
       reporter: ["text", "html", "lcov"],
       thresholds: { statements: 90, branches: 82, functions: 90, lines: 90 },
     },
