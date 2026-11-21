@@ -117,24 +117,49 @@
         "default": "./dist/entry-counters-kv.cjs"
       }
     },
+    "./react": {
+      "import": {
+        "types": "./dist/entry-react.d.mts",
+        "default": "./dist/entry-react.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-react.d.cts",
+        "default": "./dist/entry-react.cjs"
+      }
+    },
+    "./react/components.css": "./dist/react-components.css",
+    "./react/embed": {
+      "import": {
+        "types": "./dist/types-react/react-embed.d.ts",
+        "default": "./dist/react-embed.js"
+      }
+    },
+    "./react/styles.css": "./dist/react.css",
+    "./ui/*": "./dist/ui/*",
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "bun run build:lib",
+    "build": "bun run build:lib && bun run build:ui && bun run build:react",
     "build:lib": "vp pack",
+    "build:ui": "vite build --config vite.ui.config.ts",
+    "dev:ui": "vite --config vite.ui.config.ts",
+    "build:react": "vite build --config vite.react.config.ts && bun scripts/scope-embed-css.ts && cp src/react/components.css dist/react-components.css && tsc -p tsconfig.react.json",
     "test": "vp test run",
     "test:coverage": "vp test run --coverage",
     "test:bun": "bun test ./test/*.bun.test.ts",
+    "test:e2e": "playwright test",
     "lint": "vp lint",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
     "typecheck": "tsc --noEmit",
     "check": "vp lint && vp fmt --check && bun run typecheck",
     "prepare": "husky || true",
-    "release": "changelogen --release --push"
+    "release": "changelogen --release --push",
+    "demo": "bun scripts/demo.ts",
+    "screenshots": "bun scripts/screenshots.ts"
   },
   "dependencies": {
     "valibot": "^1.0.0",
@@ -155,6 +180,8 @@
     "@playwright/test": "^1.49.0",
     "@tailwindcss/vite": "^4.0.0",
     "@tanstack/react-query": "^5.62.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/bun": "^1.1.14",
     "@types/express": "^5.0.0",
     "@types/pg": "^8.11.0",
@@ -173,6 +200,7 @@
     "exact-mirror": "^1.2.6",
     "express": "^5.0.0",
     "get-port-please": "^3.2.0",
+    "happy-dom": "^21.0.4",
     "hono": "^4.6.0",
     "husky": "^9.1.7",
     "lucide-react": "^1.22",

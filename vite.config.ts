@@ -59,6 +59,7 @@ export default defineConfig({
         "src/entry-counters-memory.ts",
         "src/entry-counters-buffered.ts",
         "src/entry-counters-kv.ts",
+        "src/entry-react.ts",
       ],
       dts: true,
       format: ["esm", "cjs"],

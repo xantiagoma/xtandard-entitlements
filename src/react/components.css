@@ -1,0 +1,177 @@
+/*
+ * @xtandard/entitlements/react/components.css — optional default styles for the
+ * unstyled `/react` components (<UsageMeter>, <PricingTable>, <UpgradePrompt>).
+ *
+ * Everything is keyed on `data-xe` / `data-part` attributes and a handful of
+ * custom properties, so it adapts to light and dark hosts (neutral colors are
+ * mixed from `currentColor`) and is easy to override:
+ *
+ *   :root { --xe-accent: #4d7c0f; --xe-radius: 12px; }
+ */
+
+[data-xe] {
+  --xe-accent: #65a30d;
+  --xe-accent-contrast: #ffffff;
+  --xe-warn: #d97706;
+  --xe-critical: #dc2626;
+  --xe-radius: 10px;
+  --xe-muted: color-mix(in srgb, currentColor 60%, transparent);
+  --xe-line: color-mix(in srgb, currentColor 14%, transparent);
+  --xe-track: color-mix(in srgb, currentColor 10%, transparent);
+  box-sizing: border-box;
+}
+[data-xe] *,
+[data-xe] *::before,
+[data-xe] *::after {
+  box-sizing: inherit;
+}
+
+/* ── <UsageMeter> ─────────────────────────────────────────────────────────── */
+[data-xe="meter"] {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+[data-xe="meter"] [data-part="text"] {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+[data-xe="meter"] [data-part="label"] {
+  font-weight: 500;
+}
+[data-xe="meter"] [data-part="value"],
+[data-xe="meter"] [data-part="reset"] {
+  color: var(--xe-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+[data-xe="meter"] [data-part="track"] {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--xe-track);
+  overflow: hidden;
+}
+[data-xe="meter"] [data-part="fill"] {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--xe-accent);
+  transition: width 0.4s ease;
+}
+[data-xe="meter"][data-level="warn"] [data-part="fill"] {
+  background: var(--xe-warn);
+}
+[data-xe="meter"][data-level="critical"] [data-part="fill"] {
+  background: var(--xe-critical);
+}
+[data-xe="meter"][data-level="unlimited"] [data-part="track"] {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--xe-track) 0 4px,
+    color-mix(in srgb, var(--xe-accent) 25%, transparent) 4px 8px
+  );
+}
+
+/* ── <PricingTable> ───────────────────────────────────────────────────────── */
+[data-xe="pricing"] {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+[data-xe="plan"] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--xe-line);
+  border-radius: var(--xe-radius);
+}
+[data-xe="plan"][data-highlight] {
+  border-color: color-mix(in srgb, var(--xe-accent) 55%, transparent);
+}
+[data-xe="plan"][data-current] {
+  border-color: var(--xe-accent);
+  box-shadow: 0 0 0 1px var(--xe-accent);
+}
+[data-xe="plan"] [data-part="name"] {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+[data-xe="plan"] [data-part="description"],
+[data-xe="plan"] [data-part="trial"] {
+  margin: 0;
+  color: var(--xe-muted);
+  font-size: 13px;
+}
+[data-xe="plan"] [data-part="price"] {
+  margin: 4px 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+[data-xe] [data-part="action"] {
+  appearance: none;
+  border: 1px solid var(--xe-line);
+  border-radius: calc(var(--xe-radius) - 4px);
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+[data-xe] [data-part="action"][data-relation="upgrade"],
+[data-xe="upgrade"] [data-part="action"] {
+  border-color: transparent;
+  background: var(--xe-accent);
+  color: var(--xe-accent-contrast);
+}
+[data-xe] [data-part="action"]:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+[data-xe] [data-part="action"]:focus-visible {
+  outline: 2px solid var(--xe-accent);
+  outline-offset: 2px;
+}
+[data-xe="plan"] [data-part="features"] {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--xe-line);
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+[data-xe="plan"] li[data-included="true"]::before {
+  content: "✓";
+  color: var(--xe-accent);
+  margin-right: 8px;
+  font-weight: 700;
+}
+[data-xe="plan"] li[data-included="false"] {
+  color: var(--xe-muted);
+}
+[data-xe="plan"] li[data-included="false"]::before {
+  content: "–";
+  margin-right: 8px;
+}
+
+/* ── <UpgradePrompt> ──────────────────────────────────────────────────────── */
+[data-xe="upgrade"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid color-mix(in srgb, var(--xe-accent) 40%, transparent);
+  border-radius: var(--xe-radius);
+  background: color-mix(in srgb, var(--xe-accent) 8%, transparent);
+  font-size: 14px;
+}
+[data-xe="upgrade"] [data-part="message"] {
+  margin: 0;
+  flex: 1 1 200px;
+}
