@@ -146,17 +146,17 @@ import { createBufferedCounterStore } from "@xtandard/entitlements/counters/buff
 
 const strict = createRedisCounterStore({ url: process.env.REDIS_URL });
 const ent = createEntitlements({
-  catalog,
+  catalog, // api_calls: feature.metered({ reset: "month", metering: "buffered" })
   storage,
   counters: {
     default: strict,
     buffered: createBufferedCounterStore(strict, { flushInterval: "1s", maxPending: 1000 }),
-    features: { api_calls: "buffered" },
   },
 });
 ```
 
-The buffered store decides locally and flushes one `add` per key per interval. Across N instances a buffered limit can overshoot by at most N × the pending delta per key, so keep strict limits (seats, prepaid credits) on the strict store; decisions from the buffered path carry `buffered: true`.
+Features declared with `metering: "buffered"` in the catalog use the buffered store; every other
+feature uses `default`. The buffered store decides locally and flushes one `add` per key per interval. Across N instances a buffered limit can overshoot by at most N × the pending delta per key, so keep strict limits (seats, prepaid credits) on the strict store; decisions from the buffered path carry `buffered: true`.
 
 ## Writing your own adapter
 

@@ -123,6 +123,7 @@ const adrs: [file: string, label: string][] = [
   ["0014-periods-and-resets.md", "0014 · Periods & resets"],
   ["0015-non-goals.md", "0015 · Non-goals"],
   ["0016-storage-driver-deviations.md", "0016 · Storage driver deviations"],
+  ["0017-examples-run-from-source.md", "0017 · Examples run from source"],
 ];
 
 /** A guide page that only exists once its docs/*.md does (pages land as features merge). */
@@ -274,8 +275,6 @@ export const sidebar: Item[] = prune(allSidebar);
  */
 export const pending: Record<string, string> = {
   "docs/UI.md": "project/adr/0010",
-  "docs/GETTING_STARTED.md": "guides/quickstart",
-  "examples/README.md": "guides/examples",
 };
 
 export const isPage = (i: Item): i is Page => "slug" in i;

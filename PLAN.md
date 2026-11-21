@@ -48,6 +48,7 @@ third reference for the same shape.
 | CLI                | `bin/xtandard-entitlements.mjs` → `dist/cli`                            | serve / check / consume / grant / override / plan / pricing / reconcile    |
 | Tests              | vitest projects (core + elysia2), `*.bun.test.ts`, storage conformance  | + counter conformance, billing fixtures, playwright e2e, `test-d` types    |
 | Docs               | README sections, `docs/*.md` set, ADRs, CHANGELOG (changelogen)         | Starlight site in `site/` + `pages.yml`                                    |
+| Examples           | `examples/*` + `scripts/example.ts` runner + `typecheck:examples`       | run from source via tsconfig `paths`, every example has a demo (ADR 0017)  |
 | Release            | `release.yml` (tag push → npm trusted publishing / OIDC)                | identical flow                                                             |
 
 ## Domain model (summary — `src/schema.ts` / `src/catalog.ts` are authoritative)
