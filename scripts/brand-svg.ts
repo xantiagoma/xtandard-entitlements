@@ -30,6 +30,8 @@ interface Outline {
   /** `<path>` elements positioned on a baseline at y = 0. */
   body: string;
   width: number;
+  /** Highest point of the glyphs (negative: above the baseline). */
+  top: number;
 }
 
 function outline(text: string, size: number, weight = 900): Outline {
@@ -50,15 +52,19 @@ function outline(text: string, size: number, weight = 900): Outline {
   }
   const baseline = Number(/<use[^>]*y="([\d.]+)"/.exec(svg)?.[1] ?? 0);
   let body = "";
+  let top = 0;
   for (const m of svg.matchAll(/<use xlink:href="#(glyph-[\d-]+)" x="([\d.]+)" y="([\d.]+)"\/>/g)) {
     const d = glyphs.get(m[1]!);
     if (!d) continue;
     const x = Number(m[2]);
     const y = Number(m[3]) - baseline;
     body += `<path transform="translate(${x.toFixed(2)} ${y.toFixed(2)})" d="${d}"/>`;
+    // hb-view writes absolute M/L/C/Z with x,y pairs: every second number is a y.
+    const nums = d.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+    for (let i = 1; i < nums.length; i += 2) top = Math.min(top, nums[i]! + y);
   }
   const width = Number(/width="([\d.]+)"/.exec(svg)?.[1] ?? 0);
-  return { body, width };
+  return { body, width, top };
 }
 
 // ── the symbol (1024 grid) ──────────────────────────────────────────────────
@@ -200,19 +206,24 @@ const wordGradient = (light: boolean) =>
 
 function horizontal(mode: "dark" | "light" | "white" | "black"): string {
   const mono = mode === "white" ? "#FFFFFF" : mode === "black" ? "#000000" : undefined;
-  const symH = 150; // mark height in lockup units (the X's base sits on the text baseline)
+  const symH = 150; // mark height in lockup units
   const s = symH / MARK.h;
   const symW = MARK.w * s;
   const gap = 26;
-  const baseline = 4 + (724 - MARK.y) * s;
+  // Vertically centre the mark on the wordmark's optical centre: the middle of the glyphs'
+  // ink from the ascender tops to the baseline (no descenders in the name).
+  const wordTop = Math.min(PREFIX.top, NAME.top);
+  const pad = 4;
+  const symTop = pad;
+  const baseline = symTop + symH / 2 - wordTop / 2;
+  const h = Math.max(symTop + symH, baseline) + pad;
   const prefixFill = mono ?? (mode === "dark" ? PAPER : INK);
   const nameFill = mono ?? "url(#word)";
   const w = symW + gap + PREFIX.width + NAME.width + 4;
-  const h = symH + 8;
   const track = mode === "light" ? "#C4C9CE" : "#3A4046";
   const label = mono ? `xtandard-entitlements (${mode})` : "xtandard-entitlements";
   return `${header(w, h, label)}<defs>${limeGradient("lime", mode === "light")}${wordGradient(mode === "light")}</defs>
-<g transform="translate(0 4) scale(${s.toFixed(5)}) translate(${-MARK.x} ${f(-MARK.y)})">${symbolBody({ brackets: false, track, ...(mono ? { mono } : {}) })}</g>
+<g transform="translate(0 ${symTop}) scale(${s.toFixed(5)}) translate(${-MARK.x} ${f(-MARK.y)})">${symbolBody({ brackets: false, track, ...(mono ? { mono } : {}) })}</g>
 <g transform="translate(${f(symW + gap)} ${f(baseline)})" fill="${prefixFill}">${PREFIX.body}</g>
 <g transform="translate(${f(symW + gap + PREFIX.width)} ${f(baseline)})" fill="${nameFill}">${NAME.body}</g>
 </svg>`;
