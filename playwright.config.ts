@@ -1,6 +1,4 @@
-import { defineConfig, devices } from "@playwright/test";
-
-const PORT = 3411;
+import { definePlaywrightConfig } from "@xtandard/kit/build";
 
 /**
  * Browser e2e for the admin SPA, the customer portal and the React embeds.
@@ -10,22 +8,9 @@ const PORT = 3411;
  *
  *   bun run test:e2e
  */
-export default defineConfig({
-  testDir: "e2e",
-  testMatch: "**/*.spec.ts",
-  fullyParallel: false,
+export default definePlaywrightConfig({
+  port: 3411,
+  serverCmd: "bun run build && bun e2e/server.ts",
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? "github" : "list",
-  use: {
-    baseURL: `http://localhost:${PORT}`,
-    trace: "on-first-retry",
-  },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: {
-    command: `bun run build && PORT=${PORT} bun e2e/server.ts`,
-    url: `http://localhost:${PORT}/healthcheck`,
-    timeout: 300_000,
-    reuseExistingServer: !process.env.CI,
-  },
+  timeout: 300_000,
 });

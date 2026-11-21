@@ -116,12 +116,15 @@ async function bundle(): Promise<void> {
       .join("\n");
     ok(css.includes(".xtandard-entitlements"), "the portal's styles are scoped");
     // In the repo, the same leak check the package build runs on dist/react.css.
-    const scoper = join(root, "../../scripts/scope-embed-css.ts");
-    if (existsSync(scoper)) {
-      const { findUnscopedLeaks } = (await import(scoper)) as {
-        findUnscopedLeaks: (css: string) => string[];
-      };
-      equal(findUnscopedLeaks(css), [], "no unscoped preflight rules leak into the host");
+    const kitBuild = (await import("@xtandard/kit/build").catch(() => null)) as {
+      findUnscopedLeaks: (css: string, scope: string) => string[];
+    } | null;
+    if (kitBuild) {
+      equal(
+        kitBuild.findUnscopedLeaks(css, ".xtandard-entitlements"),
+        [],
+        "no unscoped preflight rules leak into the host",
+      );
     }
     info("assets:", assets);
   } finally {
