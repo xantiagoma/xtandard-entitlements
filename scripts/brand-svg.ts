@@ -190,7 +190,6 @@ await write(
 // ── lockups ─────────────────────────────────────────────────────────────────
 const PREFIX = outline("xtandard-", 100);
 const NAME = outline("entitlements", 100);
-const WORD_H = 100; // font size in lockup units; x-height ≈ 45
 const wordGradient = (light: boolean) =>
   `<linearGradient id="word" x1="0" y1="-60" x2="0" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${light ? "#84CC16" : LIME_HI}"/><stop offset="1" stop-color="${light ? LIME_TEXT_LIGHT : LIME}"/></linearGradient>`;
 
