@@ -208,6 +208,13 @@ const allSidebar: Item[] = [
     label: "UI & API",
     items: [
       ...optional({ slug: "ui/admin", src: "docs/UI.md", label: "Admin UI & React" }),
+      {
+        slug: "ui/screenshots",
+        src: "README.md",
+        sections: ["Screenshots"],
+        title: "Screenshots",
+        label: "Screenshots",
+      },
       ...optional({ slug: "ui/portal", src: "docs/PORTAL.md", label: "Customer portal" }),
       { slug: "reference/http-api", src: "docs/HTTP_API.md", label: "HTTP API" },
       ...optional({ slug: "security/auth", src: "docs/AUTH.md", label: "Authentication" }),
