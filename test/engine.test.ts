@@ -581,6 +581,35 @@ describe("control plane", () => {
   });
 });
 
+describe("default counters", () => {
+  it("persist in a compare-and-swap storage when no counters are given", async () => {
+    const storage = createMemoryStorage();
+    const a = createEntitlements({ catalog, storage, usageSeries: false });
+    await a.consume("org", "api_calls", 7);
+    const b = createEntitlements({ catalog, storage, usageSeries: false }); // "after a restart"
+    expect((await b.check("org", "api_calls")).used).toBe(7);
+  });
+
+  it("fall back to memory with a warning for storage without CAS", async () => {
+    const inner = createMemoryStorage();
+    const plain: EntitlementsStorage = {
+      getItem: (k) => inner.getItem(k),
+      setItem: (k, v) => inner.setItem(k, v),
+      removeItem: (k) => inner.removeItem(k),
+      getKeys: (p) => inner.getKeys(p),
+    };
+    const warnings: string[] = [];
+    const ent = createEntitlements({
+      catalog,
+      storage: plain,
+      usageSeries: false,
+      logger: { warn: (m) => void warnings.push(m) },
+    });
+    expect(warnings[0]).toMatch(/lost on restart/);
+    expect((await ent.consume("org", "api_calls", 2)).used).toBe(2);
+  });
+});
+
 describe("caching and failure modes (ADR 0003)", () => {
   const flaky = () => {
     const inner = createMemoryStorage();
