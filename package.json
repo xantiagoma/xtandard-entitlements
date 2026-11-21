@@ -430,6 +430,106 @@
         "default": "./dist/entry-counters-drizzle.cjs"
       }
     },
+    "./billing": {
+      "import": {
+        "types": "./dist/entry-billing.d.mts",
+        "default": "./dist/entry-billing.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-billing.d.cts",
+        "default": "./dist/entry-billing.cjs"
+      }
+    },
+    "./billing/stripe": {
+      "import": {
+        "types": "./dist/entry-billing-stripe.d.mts",
+        "default": "./dist/entry-billing-stripe.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-billing-stripe.d.cts",
+        "default": "./dist/entry-billing-stripe.cjs"
+      }
+    },
+    "./billing/polar": {
+      "import": {
+        "types": "./dist/entry-billing-polar.d.mts",
+        "default": "./dist/entry-billing-polar.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-billing-polar.d.cts",
+        "default": "./dist/entry-billing-polar.cjs"
+      }
+    },
+    "./billing/paddle": {
+      "import": {
+        "types": "./dist/entry-billing-paddle.d.mts",
+        "default": "./dist/entry-billing-paddle.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-billing-paddle.d.cts",
+        "default": "./dist/entry-billing-paddle.cjs"
+      }
+    },
+    "./billing/lemonsqueezy": {
+      "import": {
+        "types": "./dist/entry-billing-lemonsqueezy.d.mts",
+        "default": "./dist/entry-billing-lemonsqueezy.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-billing-lemonsqueezy.d.cts",
+        "default": "./dist/entry-billing-lemonsqueezy.cjs"
+      }
+    },
+    "./billing/better-auth": {
+      "import": {
+        "types": "./dist/entry-billing-better-auth.d.mts",
+        "default": "./dist/entry-billing-better-auth.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-billing-better-auth.d.cts",
+        "default": "./dist/entry-billing-better-auth.cjs"
+      }
+    },
+    "./billing/manual": {
+      "import": {
+        "types": "./dist/entry-billing-manual.d.mts",
+        "default": "./dist/entry-billing-manual.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-billing-manual.d.cts",
+        "default": "./dist/entry-billing-manual.cjs"
+      }
+    },
+    "./flags": {
+      "import": {
+        "types": "./dist/entry-flags.d.mts",
+        "default": "./dist/entry-flags.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-flags.d.cts",
+        "default": "./dist/entry-flags.cjs"
+      }
+    },
+    "./bridges/audit": {
+      "import": {
+        "types": "./dist/entry-bridges-audit.d.mts",
+        "default": "./dist/entry-bridges-audit.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-bridges-audit.d.cts",
+        "default": "./dist/entry-bridges-audit.cjs"
+      }
+    },
+    "./bridges/webhooks": {
+      "import": {
+        "types": "./dist/entry-bridges-webhooks.d.mts",
+        "default": "./dist/entry-bridges-webhooks.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-bridges-webhooks.d.cts",
+        "default": "./dist/entry-bridges-webhooks.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -459,6 +559,7 @@
   },
   "devDependencies": {
     "@base-ui-components/react": "1.0.0-rc.0",
+    "@better-auth/stripe": "^1.7.27",
     "@codemirror/commands": "^6.10.4",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/language": "^6.12.4",
@@ -482,6 +583,7 @@
     "@vitest/coverage-v8": "^4.1.6",
     "@xtandard/flags": "^0.1.11",
     "@xtandard/webhooks": "^0.1.4",
+    "better-auth": "^1.7.27",
     "changelogen": "^0.6.2",
     "class-variance-authority": "^0.7",
     "clsx": "^2.1",
