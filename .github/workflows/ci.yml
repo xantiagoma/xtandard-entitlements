@@ -13,7 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       redis:
-        image: redis:7
+        # Redis 8 bundles the JSON module (createRedisJSONStorage's live suite).
+        image: redis:8
         ports:
           - 6379:6379
         options: >-
@@ -42,10 +43,23 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: entitlements
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     env:
       REDIS_URL: redis://localhost:6379
       MONGO_URL: mongodb://localhost:27017
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/entitlements
+      MYSQL_URL: mysql://root:root@127.0.0.1:3306/entitlements
     steps:
       - uses: actions/checkout@v4
 
@@ -65,7 +79,7 @@ jobs:
       - name: Format check
         run: bun run format:check
 
-      - name: Test + coverage (live Redis/Mongo/Postgres; enforces thresholds)
+      - name: Test + coverage (live Redis/Mongo/Postgres/MySQL; enforces thresholds)
         run: bun run test:coverage
 
       - name: Test (bun:sqlite, native bun test)

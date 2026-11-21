@@ -250,6 +250,186 @@
         "default": "./dist/entry-next.cjs"
       }
     },
+    "./storage/file": {
+      "import": {
+        "types": "./dist/entry-storage-file.d.mts",
+        "default": "./dist/entry-storage-file.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-file.d.cts",
+        "default": "./dist/entry-storage-file.cjs"
+      }
+    },
+    "./storage/redis": {
+      "import": {
+        "types": "./dist/entry-storage-redis.d.mts",
+        "default": "./dist/entry-storage-redis.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-redis.d.cts",
+        "default": "./dist/entry-storage-redis.cjs"
+      }
+    },
+    "./storage/postgres": {
+      "import": {
+        "types": "./dist/entry-storage-postgres.d.mts",
+        "default": "./dist/entry-storage-postgres.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-postgres.d.cts",
+        "default": "./dist/entry-storage-postgres.cjs"
+      }
+    },
+    "./storage/drizzle": {
+      "import": {
+        "types": "./dist/entry-storage-drizzle.d.mts",
+        "default": "./dist/entry-storage-drizzle.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-drizzle.d.cts",
+        "default": "./dist/entry-storage-drizzle.cjs"
+      }
+    },
+    "./storage/mongodb": {
+      "import": {
+        "types": "./dist/entry-storage-mongodb.d.mts",
+        "default": "./dist/entry-storage-mongodb.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-mongodb.d.cts",
+        "default": "./dist/entry-storage-mongodb.cjs"
+      }
+    },
+    "./storage/sqlite": {
+      "import": {
+        "types": "./dist/entry-storage-sqlite.d.mts",
+        "default": "./dist/entry-storage-sqlite.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-sqlite.d.cts",
+        "default": "./dist/entry-storage-sqlite.cjs"
+      }
+    },
+    "./storage/libsql": {
+      "import": {
+        "types": "./dist/entry-storage-libsql.d.mts",
+        "default": "./dist/entry-storage-libsql.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-libsql.d.cts",
+        "default": "./dist/entry-storage-libsql.cjs"
+      }
+    },
+    "./storage/unstorage": {
+      "import": {
+        "types": "./dist/entry-storage-unstorage.d.mts",
+        "default": "./dist/entry-storage-unstorage.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-unstorage.d.cts",
+        "default": "./dist/entry-storage-unstorage.cjs"
+      }
+    },
+    "./storage/cloudflare-kv": {
+      "import": {
+        "types": "./dist/entry-storage-cloudflare-kv.d.mts",
+        "default": "./dist/entry-storage-cloudflare-kv.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-cloudflare-kv.d.cts",
+        "default": "./dist/entry-storage-cloudflare-kv.cjs"
+      }
+    },
+    "./drizzle/pg": {
+      "import": {
+        "types": "./dist/entry-drizzle-pg.d.mts",
+        "default": "./dist/entry-drizzle-pg.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-drizzle-pg.d.cts",
+        "default": "./dist/entry-drizzle-pg.cjs"
+      }
+    },
+    "./drizzle/mysql": {
+      "import": {
+        "types": "./dist/entry-drizzle-mysql.d.mts",
+        "default": "./dist/entry-drizzle-mysql.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-drizzle-mysql.d.cts",
+        "default": "./dist/entry-drizzle-mysql.cjs"
+      }
+    },
+    "./drizzle/sqlite": {
+      "import": {
+        "types": "./dist/entry-drizzle-sqlite.d.mts",
+        "default": "./dist/entry-drizzle-sqlite.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-drizzle-sqlite.d.cts",
+        "default": "./dist/entry-drizzle-sqlite.cjs"
+      }
+    },
+    "./counters/redis": {
+      "import": {
+        "types": "./dist/entry-counters-redis.d.mts",
+        "default": "./dist/entry-counters-redis.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-redis.d.cts",
+        "default": "./dist/entry-counters-redis.cjs"
+      }
+    },
+    "./counters/postgres": {
+      "import": {
+        "types": "./dist/entry-counters-postgres.d.mts",
+        "default": "./dist/entry-counters-postgres.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-postgres.d.cts",
+        "default": "./dist/entry-counters-postgres.cjs"
+      }
+    },
+    "./counters/sqlite": {
+      "import": {
+        "types": "./dist/entry-counters-sqlite.d.mts",
+        "default": "./dist/entry-counters-sqlite.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-sqlite.d.cts",
+        "default": "./dist/entry-counters-sqlite.cjs"
+      }
+    },
+    "./counters/libsql": {
+      "import": {
+        "types": "./dist/entry-counters-libsql.d.mts",
+        "default": "./dist/entry-counters-libsql.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-libsql.d.cts",
+        "default": "./dist/entry-counters-libsql.cjs"
+      }
+    },
+    "./counters/mongodb": {
+      "import": {
+        "types": "./dist/entry-counters-mongodb.d.mts",
+        "default": "./dist/entry-counters-mongodb.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-mongodb.d.cts",
+        "default": "./dist/entry-counters-mongodb.cjs"
+      }
+    },
+    "./counters/drizzle": {
+      "import": {
+        "types": "./dist/entry-counters-drizzle.d.mts",
+        "default": "./dist/entry-counters-drizzle.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-drizzle.d.cts",
+        "default": "./dist/entry-counters-drizzle.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -288,6 +468,7 @@
     "@elysia/eden": "2.0.0-rc.0",
     "@elysiajs/eden": "^1.4",
     "@lezer/highlight": "^1.2.3",
+    "@libsql/client": "0.15.15",
     "@openfeature/server-sdk": "^1.16.0",
     "@playwright/test": "^1.49.0",
     "@tailwindcss/vite": "^4.0.0",
@@ -314,6 +495,7 @@
     "husky": "^9.1.7",
     "lucide-react": "^1.22",
     "mongodb": "^6.10.0",
+    "mysql2": "^3.24.6",
     "pg": "^8.13.0",
     "playwright": "^1.49.0",
     "postcss": "^8.5.16",
