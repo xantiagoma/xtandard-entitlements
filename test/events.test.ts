@@ -1,11 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { defaultEventErrorReporter, emit, type UsageEvent } from "../src/events.ts";
-import {
-  defaultHookErrorReporter,
-  normalizeHooks,
-  runAfter,
-  runBefore,
-} from "../src/hooks/contract.ts";
+import { defaultHookErrorReporter } from "../src/hooks/contract.ts";
 
 const event = {
   customer: "c",
@@ -48,31 +43,7 @@ describe("emit", () => {
       at: "x",
     });
     expect(warn).toHaveBeenCalledTimes(2);
+    expect(String(warn.mock.calls[1]?.[0])).toContain("[@xtandard/entitlements]");
     warn.mockRestore();
-  });
-});
-
-describe("hooks", () => {
-  it("normalizes, runs before sequentially and isolates after errors", async () => {
-    expect(normalizeHooks(undefined)).toEqual([]);
-    const order: string[] = [];
-    const hooks = normalizeHooks([
-      { before: async () => void order.push("b1"), after: () => void order.push("a1") },
-      {
-        before: () => void order.push("b2"),
-        after: () => {
-          throw new Error("boom");
-        },
-      },
-    ]);
-    await runBefore(hooks, { type: "customer.update", customer: "c", actor: null });
-    const errors: unknown[] = [];
-    await runAfter(
-      hooks,
-      { type: "usage.reset", customer: "c", feature: "f", actor: null, at: "x" },
-      (e) => errors.push(e),
-    );
-    expect(order).toEqual(["b1", "b2", "a1"]);
-    expect(errors).toHaveLength(1);
   });
 });

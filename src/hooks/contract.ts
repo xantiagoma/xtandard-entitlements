@@ -13,6 +13,12 @@
  * @module
  */
 
+import {
+  createHookErrorReporter,
+  type HookErrorReporter as KitHookErrorReporter,
+  type Hooks,
+  type HooksInput,
+} from "@xtandard/kit/hooks";
 import type { Actor, CustomerState, Grant, Override, Subscription } from "../schema.ts";
 
 /** Events delivered to `before` hooks (the mutation has not happened yet). */
@@ -95,61 +101,17 @@ export type AfterEvent =
 export type BeforeEventType = BeforeEvent["type"];
 export type AfterEventType = AfterEvent["type"];
 
-/** Throw from a `before` hook to deny with a status (default 403). */
-export class HookDeniedError extends Error {
-  /** HTTP status the API layer should respond with. Default `403`. */
-  readonly status: number;
-  constructor(message: string, options?: { status?: number; cause?: unknown }) {
-    super(message, options?.cause !== undefined ? { cause: options.cause } : undefined);
-    this.name = "HookDeniedError";
-    this.status = options?.status ?? 403;
-  }
-}
+export { HookDeniedError, normalizeHooks, runAfter, runBefore } from "@xtandard/kit/hooks";
 
 /** A hook: implement either side or both. */
-export interface EntitlementsHooks {
-  before?(event: BeforeEvent): void | Promise<void>;
-  after?(event: AfterEvent): void | Promise<void>;
-}
+export type EntitlementsHooks = Hooks<BeforeEvent, AfterEvent>;
 
 /** Accepts a single hook, an array, or nothing. */
-export type EntitlementsHooksInput = EntitlementsHooks | readonly EntitlementsHooks[] | undefined;
+export type EntitlementsHooksInput = HooksInput<BeforeEvent, AfterEvent>;
 
 /** Reports an error thrown by an `after` hook. */
-export type HookErrorReporter = (error: unknown, event: AfterEvent) => void;
+export type HookErrorReporter = KitHookErrorReporter<AfterEvent>;
 
-/** Normalize the `hooks` option into a flat array (empty when unset). */
-export function normalizeHooks(input: EntitlementsHooksInput): EntitlementsHooks[] {
-  if (!input) return [];
-  return Array.isArray(input) ? [...input] : [input as EntitlementsHooks];
-}
-
-/** Run `before` hooks sequentially; the first throw denies. */
-export async function runBefore(hooks: EntitlementsHooks[], event: BeforeEvent): Promise<void> {
-  for (const hook of hooks) {
-    if (hook.before) await hook.before(event);
-  }
-}
-
-/** Run `after` hooks concurrently; errors go to `onError`, never to the caller. */
-export async function runAfter(
-  hooks: EntitlementsHooks[],
-  event: AfterEvent,
-  onError: HookErrorReporter,
-): Promise<void> {
-  await Promise.all(
-    hooks.map(async (hook) => {
-      if (!hook.after) return;
-      try {
-        await hook.after(event);
-      } catch (error) {
-        onError(error, event);
-      }
-    }),
-  );
-}
-
-/** Default `after`-hook error reporter: warn, never throw. */
-export const defaultHookErrorReporter: HookErrorReporter = (error, event) => {
-  console.warn(`[@xtandard/entitlements] after hook failed for "${event.type}":`, error);
-};
+/** Default `after`-hook error reporter: warn with the `[@xtandard/entitlements]` prefix, never throw. */
+export const defaultHookErrorReporter: HookErrorReporter =
+  createHookErrorReporter("@xtandard/entitlements");

@@ -12,7 +12,11 @@
  * @module
  */
 
-import type { Principal } from "../auth/contract.ts";
+import {
+  defineActions,
+  type AuthorizationProvider as KitAuthorizationProvider,
+  type AuthorizeInput as KitAuthorizeInput,
+} from "@xtandard/kit/authorization";
 
 /** The full set of authorizable actions. */
 export type EntitlementsAction =
@@ -48,36 +52,46 @@ export type EntitlementsResource =
   | { type: "portal"; customer: string };
 
 /** Input passed to {@link AuthorizationProvider.authorize}. */
-export interface AuthorizeInput {
-  principal: Principal | null;
-  action: EntitlementsAction;
-  resource: EntitlementsResource;
-  request: Request;
-}
+export type AuthorizeInput = KitAuthorizeInput<EntitlementsAction, EntitlementsResource>;
 
 /** Decides whether an action is permitted. */
-export interface AuthorizationProvider {
-  authorize(input: AuthorizeInput): Promise<boolean>;
-}
+export type AuthorizationProvider = KitAuthorizationProvider<
+  EntitlementsAction,
+  EntitlementsResource
+>;
+
+/** The action constants, checked by `defineActions` (mutating ⊆ all, portal ⊆ all). */
+const ACTIONS = defineActions<EntitlementsAction>({
+  all: [
+    "catalog:read",
+    "customer:read",
+    "customer:update",
+    "customer:delete",
+    "subscription:write",
+    "grant:write",
+    "override:write",
+    "usage:read",
+    "usage:write",
+    "activity:read",
+    "runtime:check",
+    "runtime:consume",
+    "portal:read",
+    "portal:checkout",
+    "portal:manage",
+  ],
+  mutating: [
+    "customer:update",
+    "customer:delete",
+    "subscription:write",
+    "grant:write",
+    "override:write",
+    "usage:write",
+  ],
+  portal: ["portal:read", "portal:checkout", "portal:manage"],
+});
 
 /** Every action, in a stable order (role presets, docs, the UI). */
-export const ALL_ACTIONS: readonly EntitlementsAction[] = [
-  "catalog:read",
-  "customer:read",
-  "customer:update",
-  "customer:delete",
-  "subscription:write",
-  "grant:write",
-  "override:write",
-  "usage:read",
-  "usage:write",
-  "activity:read",
-  "runtime:check",
-  "runtime:consume",
-  "portal:read",
-  "portal:checkout",
-  "portal:manage",
-];
+export const ALL_ACTIONS: readonly EntitlementsAction[] = ACTIONS.ALL_ACTIONS;
 
 /**
  * Control-plane actions that write state — blocked when the panel (or the
@@ -86,22 +100,11 @@ export const ALL_ACTIONS: readonly EntitlementsAction[] = [
  * readonly freezes the _control plane_, metering keeps working (engine
  * `readonly` has the same semantics).
  */
-export const MUTATING_ACTIONS: ReadonlySet<EntitlementsAction> = new Set<EntitlementsAction>([
-  "customer:update",
-  "customer:delete",
-  "subscription:write",
-  "grant:write",
-  "override:write",
-  "usage:write",
-]);
+export const MUTATING_ACTIONS: ReadonlySet<EntitlementsAction> = ACTIONS.MUTATING_ACTIONS;
 
 /** True if the action writes control-plane state. */
 export const isMutatingAction = (action: EntitlementsAction): boolean =>
-  MUTATING_ACTIONS.has(action);
+  ACTIONS.isMutatingAction(action);
 
 /** The actions a portal-token principal may be granted (and the default scope of a token). */
-export const PORTAL_ACTIONS: readonly EntitlementsAction[] = [
-  "portal:read",
-  "portal:checkout",
-  "portal:manage",
-];
+export const PORTAL_ACTIONS: readonly EntitlementsAction[] = ACTIONS.PORTAL_ACTIONS;
