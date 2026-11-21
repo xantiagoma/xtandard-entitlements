@@ -88,6 +88,25 @@ export function runStorageContractTests(
       );
     });
 
+    test("keys with ? \\ ] : # stay distinct and round-trip (no normalization)", async () => {
+      const storage = await makeStorage();
+      const keys = [
+        "ent/s/a?b",
+        "ent/s/ab",
+        "ent/s/a\\b",
+        "ent/s/a:b",
+        "ent/s/a]b",
+        "ent/s/a#b",
+        "ent/s/a/b",
+      ];
+      for (const [i, k] of keys.entries()) await storage.setItem(k, { i });
+      for (const [i, k] of keys.entries()) expect(await storage.getItem(k)).toEqual({ i });
+      expect((await storage.getKeys("ent/s/")).sort()).toEqual([...keys].sort());
+      expect(await storage.getKeys("ent/s/a?")).toEqual(["ent/s/a?b"]);
+      expect(await storage.getKeys("ent/s/a\\")).toEqual(["ent/s/a\\b"]);
+      expect(await storage.getKeys("ent/s/a]")).toEqual(["ent/s/a]b"]);
+    });
+
     test("keys are accent-sensitive (é ≠ e), raw and encoded", async () => {
       const storage = await makeStorage();
       await storage.setItem("ent/raw/café", { v: "accent" });
