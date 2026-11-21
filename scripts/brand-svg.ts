@@ -199,6 +199,10 @@ await write("symbol-dark.svg", symbolSvg({ track: "#3A4046", bracket: BRACKET, l
 await write("symbol-light.svg", symbolSvg({ track: "#C4C9CE", bracket: "#8B939C", light: true }));
 
 // ── lockups ─────────────────────────────────────────────────────────────────
+/** Urbanist's cap height at the 100-unit wordmark size (OS/2 sCapHeight 0.7 em). */
+const CAP_HEIGHT = 70;
+/** Room below the baseline for descenders (Urbanist's descender at 100 units, as in the siblings). */
+const DESCENT = 26;
 const PREFIX = outline("xtandard-", 100);
 const NAME = outline("entitlements", 100);
 const wordGradient = (light: boolean) =>
@@ -210,13 +214,12 @@ function horizontal(mode: "dark" | "light" | "white" | "black"): string {
   const s = symH / MARK.h;
   const symW = MARK.w * s;
   const gap = 26;
-  // Vertically centre the mark on the wordmark's optical centre: the middle of the glyphs'
-  // ink from the ascender tops to the baseline (no descenders in the name).
-  const wordTop = Math.min(PREFIX.top, NAME.top);
-  const pad = 4;
-  const symTop = pad;
-  const baseline = symTop + symH / 2 - wordTop / 2;
-  const h = Math.max(symTop + symH, baseline) + pad;
+  // Shared xtandard rule: the mark's vertical centre (its full bounds) sits on the wordmark's
+  // optical centre, half Urbanist's cap height (OS/2 sCapHeight 0.7 em = 70 units) above the
+  // baseline; descenders are ignored but stay inside the canvas.
+  const symTop = 4;
+  const baseline = symTop + symH / 2 + CAP_HEIGHT / 2;
+  const h = Math.max(symH + 8, baseline + DESCENT + 4);
   const prefixFill = mono ?? (mode === "dark" ? PAPER : INK);
   const nameFill = mono ?? "url(#word)";
   const w = symW + gap + PREFIX.width + NAME.width + 4;
