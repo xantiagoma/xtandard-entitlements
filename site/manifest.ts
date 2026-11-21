@@ -272,12 +272,7 @@ export const pending: Record<string, string> = {
   "docs/STORAGE.md": "project/adr/0004",
   "docs/ECOSYSTEM.md": "project/adr/0013",
   "docs/OPENFEATURE.md": "project/adr/0008",
-  "docs/ADAPTERS.md": "reference/http-api",
-  "docs/AUTH.md": "reference/http-api",
-  "docs/AUTHORIZATION.md": "reference/http-api",
   "docs/UI.md": "project/adr/0010",
-  "docs/PORTAL.md": "project/adr/0010",
-  "docs/DEPLOYMENT.md": "guides/quickstart",
   "docs/GETTING_STARTED.md": "guides/quickstart",
   "examples/README.md": "guides/examples",
 };
