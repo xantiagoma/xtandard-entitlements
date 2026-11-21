@@ -3,6 +3,19 @@
 All notable changes to `@xtandard/entitlements`. Versions follow ZeroVer (`0.x`); entries are
 generated from conventional commits with `changelogen` (see [Releases](./docs/RELEASES.md)).
 
+## v0.1.1
+
+Docs-only release so npm shows the current README.
+
+### Documentation
+
+- **readme:** npm link in the ecosystem row; `@xtandard/audit` and `@xtandard/links` in the ecosystem table ([#12](https://github.com/xantiagoma/xtandard-entitlements/pull/12), [#22](https://github.com/xantiagoma/xtandard-entitlements/pull/22))
+- **site:** "The xtandard ecosystem" cards on the docs home page ([#23](https://github.com/xantiagoma/xtandard-entitlements/pull/23))
+
+### Chore
+
+- **fmt:** pre-commit formatting no longer fails on `.mdx`- or `CHANGELOG.md`-only commits ([#24](https://github.com/xantiagoma/xtandard-entitlements/pull/24))
+
 ## v0.1.0
 
 First release.

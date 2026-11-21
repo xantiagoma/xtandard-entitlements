@@ -1,6 +1,6 @@
 {
   "name": "@xtandard/entitlements",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Embeddable entitlements, plans and usage-metering engine: a typed catalog in code, memory-first checks, atomic metering, grants and overrides, any billing provider, any storage, any framework — with an admin UI and a customer portal.",
   "keywords": [
     "billing",
