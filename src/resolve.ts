@@ -175,11 +175,16 @@ export function resolveEntitlements(
   const baseSub = active.find((a) => a.plan.group === "base" && !a.info.default)?.info
     .subscriptionId;
   const anchorSub = customer.subscriptions.find((s) => s.id === baseSub);
-  const anchor = {
-    ...(anchorSub?.periodStart ? { periodStart: anchorSub.periodStart } : {}),
-    ...(anchorSub?.periodEnd ? { periodEnd: anchorSub.periodEnd } : {}),
-    anchor: anchorSub?.createdAt ?? customer.createdAt,
-  };
+  // Without an entitled base subscription, billing periods are UTC calendar months: a
+  // never-written customer has no stable createdAt (it would be "now" on every call), and
+  // switching anchors on the first write would silently reset usage mid-month.
+  const anchor = anchorSub
+    ? {
+        ...(anchorSub.periodStart ? { periodStart: anchorSub.periodStart } : {}),
+        ...(anchorSub.periodEnd ? { periodEnd: anchorSub.periodEnd } : {}),
+        anchor: anchorSub.createdAt,
+      }
+    : {};
 
   const features: Record<string, ResolvedFeature> = {};
   for (const key of n.featureOrder) {
@@ -205,7 +210,7 @@ function resolveFeature(
   addons: { sub: Subscription; key: string }[],
   catalog: AnyCatalog,
   now: number,
-  anchor: { periodStart?: string; periodEnd?: string; anchor: string },
+  anchor: { periodStart?: string; periodEnd?: string; anchor?: string },
   bound: (iso: string | undefined | null) => void,
 ): ResolvedFeature {
   const n = catalog.normalized;

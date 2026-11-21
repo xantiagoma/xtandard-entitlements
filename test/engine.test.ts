@@ -117,6 +117,26 @@ describe("consume", () => {
     });
   });
 
+  it("billing_period without a subscription is a stable calendar month (unknown customers too)", async () => {
+    const { defineCatalog, feature } = await import("../src/catalog.ts");
+    const c = defineCatalog({
+      features: { credits: feature.credits({ reset: "billing_period" }) },
+      plans: { free: { default: true, features: { credits: 100 } } },
+    });
+    const { ent, clock } = createTestEntitlements({ catalog: c, now: "2026-11-20T12:00:00Z" });
+    await ent.consume("never_written", "credits", 10);
+    clock.advance("6m");
+    expect(await ent.check("never_written", "credits")).toMatchObject({
+      used: 10,
+      resetsAt: "2026-12-01T00:00:00.000Z",
+    });
+    await ent.updateCustomer("never_written", { name: "Now stored" }); // first write must not reset usage
+    clock.advance("1h");
+    expect((await ent.check("never_written", "credits")).used).toBe(10);
+    clock.set("2026-12-01T00:00:01Z");
+    expect((await ent.check("never_written", "credits")).used).toBe(0);
+  });
+
   it("drains allowance, then one-off grants by priority, then refunds on failure", async () => {
     const { ent } = setup();
     await ent.grant("org", { feature: "api_calls", amount: 50, priority: 1 });
