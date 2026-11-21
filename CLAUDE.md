@@ -20,3 +20,17 @@ formats `.md`) and `bun run check` (lint + format check + typecheck); `bun run t
   storage + counter conformance suites (`test/storage-contract.ts`, `test/counter-contract.ts`)
   run against every driver; live Redis/Mongo/Postgres tests skip when `REDIS_URL` / `MONGO_URL` /
   `POSTGRES_URL` are unset.
+
+## Docs Site
+
+`site/` is an Astro Starlight site (own `package.json`/lockfile, not published) deployed by
+`.github/workflows/pages.yml` to https://me.xantiagoma.com/xtandard-entitlements/.
+
+- `README.md` and `docs/*.md` (ADRs included) are the source of truth (they render on GitHub/npm).
+  `site/scripts/sync.ts` copies them into `site/src/content/docs/` (generated, gitignored), splitting
+  README sections into pages by H2 per `site/manifest.ts` — **renaming a README H2 the manifest lists,
+  or adding/renaming a file in `docs/`, needs `site/manifest.ts` updated** (sync fails loudly).
+  `pending` in the manifest maps guides that have not landed yet to a fallback page.
+- The API reference is generated from `src/` by starlight-typedoc, one module per `exports` entry;
+  each entry file starts with a `@module <name>` doc comment.
+- `bun run docs:dev` / `docs:build` / `docs:preview` (port 4324). The build fails on broken links.
