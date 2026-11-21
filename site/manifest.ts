@@ -122,6 +122,7 @@ const adrs: [file: string, label: string][] = [
   ["0013-ecosystem-bridges.md", "0013 · Ecosystem bridges"],
   ["0014-periods-and-resets.md", "0014 · Periods & resets"],
   ["0015-non-goals.md", "0015 · Non-goals"],
+  ["0016-storage-driver-deviations.md", "0016 · Storage driver deviations"],
 ];
 
 /** A guide page that only exists once its docs/*.md does (pages land as features merge). */
@@ -272,7 +273,6 @@ export const sidebar: Item[] = prune(allSidebar);
  * ignored as soon as its file exists, so this list can only shrink.
  */
 export const pending: Record<string, string> = {
-  "docs/STORAGE.md": "project/adr/0004",
   "docs/UI.md": "project/adr/0010",
   "docs/GETTING_STARTED.md": "guides/quickstart",
   "examples/README.md": "guides/examples",
