@@ -164,19 +164,23 @@ describe("webhooksEvents (against @xtandard/webhooks core)", () => {
     await ent.setUsage("org_1", "seats", 1); // not published
     await ent.consume("org_1", "api_calls", 800); // free: 1,000 → crosses 80 %
     const messages = await messagesOf("org_1", 11);
-    expect(messages.map((m) => m.eventType).reverse()).toEqual([
-      "entitlements.subscription.changed",
-      "entitlements.trial.started",
-      "entitlements.subscription.changed",
-      "entitlements.subscription.canceled",
-      "entitlements.subscription.removed",
-      "entitlements.grant.created",
-      "entitlements.grant.revoked",
-      "entitlements.override.created",
-      "entitlements.override.removed",
-      "entitlements.usage.reset",
-      "entitlements.usage.threshold",
-    ]);
+    // Several events can land in the same millisecond, and message ids only sort
+    // by time — compare the multiset, not the order.
+    expect(messages.map((m) => m.eventType).sort()).toEqual(
+      [
+        "entitlements.subscription.changed",
+        "entitlements.trial.started",
+        "entitlements.subscription.changed",
+        "entitlements.subscription.canceled",
+        "entitlements.subscription.removed",
+        "entitlements.grant.created",
+        "entitlements.grant.revoked",
+        "entitlements.override.created",
+        "entitlements.override.removed",
+        "entitlements.usage.reset",
+        "entitlements.usage.threshold",
+      ].sort(),
+    );
     const threshold = messages[0]!;
     expect(threshold.payload).toMatchObject({
       customer: "org_1",
