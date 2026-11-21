@@ -8,11 +8,7 @@ import { mysqlCountersTable, mysqlEntitlementsTable } from "../src/drizzle/mysql
 import { pgCountersTable, pgEntitlementsTable } from "../src/drizzle/pg.ts";
 import { sqliteCountersTable, sqliteEntitlementsTable } from "../src/drizzle/sqlite.ts";
 import { isWatchable } from "../src/storage/contract.ts";
-import {
-  affectedRows,
-  createDrizzleStorage,
-  detectDrizzleDialect,
-} from "../src/storage/drizzle.ts";
+import { createDrizzleStorage, detectDrizzleDialect } from "../src/storage/drizzle.ts";
 import { pglite, uniqueTable } from "./pglite.ts";
 import { runStorageContractTests } from "./storage-contract.ts";
 
@@ -31,11 +27,17 @@ async function pgTable() {
  * (mirroring a consumer's migration — the adapter issues no DDL); this also
  * proves real Drizzle dbs satisfy the adapter's structural `db` type.
  */
+const t = { describe, test, expect };
+const capabilities = { compareAndSwap: true, watch: false };
+
 runStorageContractTests(
   "drizzle (pg/pglite)",
   async () => createDrizzleStorage({ db: drizzle(pglite()), table: await pgTable() }),
-  { compareAndSwap: true },
+  { t, capabilities },
 );
+
+/** The libSQL client behind each sqlite storage, for writing legacy rows directly. */
+const sqliteClients = new WeakMap<object, ReturnType<typeof createClient>>();
 
 runStorageContractTests(
   "drizzle (sqlite/libsql)",
@@ -44,12 +46,24 @@ runStorageContractTests(
     await client.execute(
       "CREATE TABLE entitlements_kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
     );
-    return createDrizzleStorage({
+    const storage = createDrizzleStorage({
       db: drizzleLibsql(client),
       table: sqliteEntitlementsTable("entitlements_kv"),
     });
+    sqliteClients.set(storage, client);
+    return storage;
   },
-  { compareAndSwap: true },
+  {
+    t,
+    capabilities,
+    // Rows written before canonical JSON (key order as the caller gave it).
+    seedLegacy: async (storage, key, rawJson) => {
+      await sqliteClients.get(storage)!.execute({
+        sql: "INSERT OR REPLACE INTO entitlements_kv (key, value) VALUES (?, ?)",
+        args: [key, rawJson],
+      });
+    },
+  },
 );
 
 describe("createDrizzleStorage", () => {
@@ -57,6 +71,9 @@ describe("createDrizzleStorage", () => {
     expect(detectDrizzleDialect(drizzle(pglite()))).toBe("pg");
     expect(detectDrizzleDialect(drizzleLibsql(createClient({ url: ":memory:" })))).toBe("sqlite");
     expect(() => detectDrizzleDialect({})).toThrow(/dialect/);
+    expect(() =>
+      createDrizzleStorage({ db: {}, table: sqliteEntitlementsTable() }).getItem("k"),
+    ).toThrow(/@xtandard\/entitlements\/storage\/drizzle/);
     expect(() => detectDrizzleDialect(null)).toThrow(/dialect/);
   });
 
@@ -70,12 +87,6 @@ describe("createDrizzleStorage", () => {
     await storage.setItem("ent/k", { n: 2 });
     expect(await storage.getItem("ent/k")).toEqual({ n: 2 });
     expect(isWatchable(storage)).toBe(false);
-  });
-
-  test("affectedRows reads mysql2 and PlanetScale result shapes", () => {
-    expect(affectedRows([{ affectedRows: 1 }, []])).toBe(1);
-    expect(affectedRows({ rowsAffected: 2 })).toBe(2);
-    expect(affectedRows(undefined)).toBe(0);
   });
 });
 
@@ -107,6 +118,15 @@ describe("table factories — shape", () => {
       "varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin",
     );
     expect(mysqlCountersTable("c", { keyLength: 191 }).key.getSQLType()).toContain("varchar(191)");
+    // NO PAD key collations for new MySQL tables (trailing spaces stay distinct).
+    for (const table of [
+      mysqlEntitlementsTable("kv", { keyCollation: "utf8mb4_0900_bin" }),
+      mysqlCountersTable("c", { keyCollation: "utf8mb4_0900_bin" }),
+    ]) {
+      expect(table.key.getSQLType()).toBe(
+        "varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin",
+      );
+    }
   });
 
   test("schema, extraColumns and extraIndexes extend the tables", () => {

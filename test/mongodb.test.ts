@@ -28,18 +28,27 @@ describe.skipIf(!MONGO_URL)("mongodb (live)", () => {
     return c;
   };
 
-  runStorageContractTests("mongodb", makeStorage, { compareAndSwap: true });
+  runStorageContractTests("mongodb", makeStorage, {
+    t: { describe, test, expect },
+    capabilities: { compareAndSwap: true, watch: false },
+    timeout: 20_000,
+  });
   runCounterContractTests("mongodb", () => makeCounters(), { keys: true, concurrency: 50 });
 
-  test("storage: CAS ignores key order; values with $-keys are literal", async () => {
-    const s = makeStorage();
-    await s.setItem("ent/k", { b: 1, a: { $x: [1, 2] } });
-    expect(
-      await s.compareAndSwap({ key: "ent/k", expected: { a: { $x: [1, 2] }, b: 1 }, next: [1, 2] }),
-    ).toBe(true);
-    // An array value never matches by element (no array traversal).
-    expect(await s.compareAndSwap({ key: "ent/k", expected: 1 as never, next: 0 })).toBe(false);
-    expect(await s.getItem("ent/k")).toEqual([1, 2]);
+  test("storage: defaults to the xtandard_entitlements db and entitlements_kv collection", async () => {
+    const s = createMongoStorage({ url: MONGO_URL });
+    storages.push(s);
+    const key = `ent/test/${dbName}`;
+    await s.setItem(key, { v: 1 });
+    const client = new MongoClient(MONGO_URL!);
+    await client.connect();
+    const doc = await client
+      .db("xtandard_entitlements")
+      .collection<{ _id: string }>("entitlements_kv")
+      .findOne({ _id: key });
+    expect(doc).toMatchObject({ value: { v: 1 } });
+    await s.removeItem(key);
+    await client.close();
   });
 
   test("counters: expiry and claims follow the injected clock", async () => {
@@ -82,8 +91,12 @@ describe.skipIf(!MONGO_URL)("mongodb (live)", () => {
 
 describe("mongodb adapters without a server", () => {
   test("require a client or url", async () => {
-    await expect(createMongoStorage({}).getItem("k")).rejects.toThrow(/client.*url/);
-    await expect(createMongoCounterStore({}).get(["k"])).rejects.toThrow(/client.*url/);
+    await expect(createMongoStorage({}).getItem("k")).rejects.toThrow(
+      /@xtandard\/entitlements\/storage\/mongodb.*client.*url/,
+    );
+    await expect(createMongoCounterStore({}).get(["k"])).rejects.toThrow(
+      /@xtandard\/entitlements\/counters\/mongodb.*client.*url/,
+    );
     await expect(createMongoStorage({}).close()).resolves.toBeUndefined();
   });
 });

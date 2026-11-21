@@ -18,8 +18,8 @@
  * @module
  */
 
-import { pgConnection, type ClosableSqlClient, type SqlClient } from "../storage/postgres.ts";
-import { assertIdentifier } from "../storage/util.ts";
+import { assertIdentifier } from "@xtandard/kit/storage";
+import { pgConnection, pgReady, type SqlClient } from "@xtandard/kit/storage/postgres/internals";
 import { counterTableSql, sqlCounterStore, type SqlCounterStore } from "./sql.ts";
 
 /** Options for {@link createPostgresCounterStore}. */
@@ -71,23 +71,12 @@ export function createPostgresCounterStore(
   const connection = pgConnection(
     options.pool ?? options.client,
     options.connectionString ?? options.url,
-    "counters/postgres",
+    "@xtandard/entitlements/counters/postgres",
   );
-  const ddl = counterTableSql("pg", table);
-  let ensured: Promise<unknown> | undefined;
-
-  async function ready(): Promise<ClosableSqlClient> {
-    const c = await connection.get();
-    if (options.createTable === false) return c;
-    ensured ??= c.query(ddl);
-    try {
-      await ensured;
-    } catch (error) {
-      ensured = undefined; // let a later call retry the DDL
-      throw error;
-    }
-    return c;
-  }
+  const ready = pgReady(
+    connection,
+    options.createTable === false ? [] : [counterTableSql("pg", table)],
+  );
 
   return {
     ...sqlCounterStore({

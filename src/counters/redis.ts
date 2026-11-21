@@ -21,8 +21,8 @@
  */
 
 import type { RedisClientType } from "redis";
-import { redisConnection, scanKeys, type RedisLike } from "../storage/redis.ts";
-import { escapeRedisGlob } from "../storage/util.ts";
+import { escapeRedisGlob } from "@xtandard/kit/storage";
+import { redisConnection, scanKeys, type RedisLike } from "@xtandard/kit/storage/redis/internals";
 import { assertAmount, type CounterStore } from "./contract.ts";
 import { CLAIM_PREFIX } from "./sql.ts";
 
@@ -104,14 +104,17 @@ const num = (raw: unknown): number => Number(raw) || 0;
 export function createRedisCounterStore(options: RedisCounterStoreOptions = {}): RedisCounterStore {
   const prefix = options.prefix ?? "entitlements:counters";
   const fullPrefix = prefix ? `${prefix}:` : "";
-  const connection = redisConnection(options, "counters/redis");
+  const connection = redisConnection(options, "@xtandard/entitlements/counters/redis");
   const k = (key: string): string => fullPrefix + key;
   const claimRoot = fullPrefix + CLAIM_PREFIX;
 
   return {
     async get(keys) {
       if (keys.length === 0) return [];
-      const c = await connection.get();
+      // `MGET` is optional on the kit's structural client type (node-redis has it).
+      const c = (await connection.get()) as RedisLike & {
+        mGet?(keys: string[]): Promise<Array<string | null>>;
+      };
       const raw = c.mGet
         ? await c.mGet(keys.map(k))
         : await Promise.all(keys.map((x) => c.get(k(x))));

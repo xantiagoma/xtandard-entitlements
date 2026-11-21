@@ -22,22 +22,19 @@ afterEach(() => {
   for (const s of open.splice(0)) s.close();
 });
 
-runStorageContractTests("libsql (:memory:)", make, { compareAndSwap: true });
+runStorageContractTests("libsql (:memory:)", make, {
+  t: { describe, test, expect },
+  capabilities: { compareAndSwap: true, watch: false },
+});
 
 describe("libsql storage specifics", () => {
-  test("stores canonical JSON so CAS ignores key order", async () => {
+  test("defaults to the xtandard_entitlements_kv table", async () => {
     const client = createClient({ url: ":memory:" });
+    // TODO(kit#24): drop the cast once `LibsqlClientLike.batch` accepts a real Client.
     const storage = createLibsqlStorage({ client: client as unknown as LibsqlClientLike });
-    await storage.setItem("ent/k", { b: 1, a: { d: 1, c: 2 } });
-    const { rows } = await client.execute("SELECT value FROM xtandard_entitlements_kv");
-    expect(rows[0]?.value).toBe('{"a":{"c":2,"d":1},"b":1}');
-    expect(
-      await storage.compareAndSwap<unknown>({
-        key: "ent/k",
-        expected: { a: { c: 2, d: 1 }, b: 1 },
-        next: 2,
-      }),
-    ).toBe(true);
+    await storage.setItem("ent/k", { b: 1, a: 2 });
+    const { rows } = await client.execute("SELECT key, value FROM xtandard_entitlements_kv");
+    expect(rows.map((r) => [r.key, r.value])).toEqual([["ent/k", '{"a":2,"b":1}']]);
     storage.close(); // borrowed: does not close the client
     expect((await client.execute("SELECT 1 AS one")).rows[0]?.one).toBe(1);
     client.close();
@@ -49,7 +46,8 @@ describe("libsql storage specifics", () => {
 
   test("requires a client or url, and retries after a failed connect", async () => {
     const storage = createLibsqlStorage({});
-    await expect(storage.getItem("k")).rejects.toThrow(/client.*or.*url/i);
-    await expect(storage.getItem("k")).rejects.toThrow(/client.*or.*url/i);
+    const message = /@xtandard\/entitlements\/storage\/libsql.*client.*or.*url/i;
+    await expect(storage.getItem("k")).rejects.toThrow(message);
+    await expect(storage.getItem("k")).rejects.toThrow(message);
   });
 });

@@ -7,8 +7,12 @@
  * @module
  */
 
-import { libsqlConnection, libsqlExecutor, type LibsqlClientLike } from "../storage/libsql.ts";
-import { assertIdentifier } from "../storage/util.ts";
+import { assertIdentifier } from "@xtandard/kit/storage";
+import {
+  libsqlConnection,
+  libsqlExecutor,
+  type LibsqlClientLike,
+} from "@xtandard/kit/storage/libsql/internals";
 import { counterTableSql, sqlCounterStore, type SqlCounterStore } from "./sql.ts";
 
 /** Options for {@link createLibsqlCounterStore}. */
@@ -47,7 +51,7 @@ export function createLibsqlCounterStore(options: LibsqlCounterStoreOptions): Li
   const connection = libsqlConnection(
     options,
     [counterTableSql("sqlite", table)],
-    "counters/libsql",
+    "@xtandard/entitlements/counters/libsql",
   );
   return {
     ...sqlCounterStore({

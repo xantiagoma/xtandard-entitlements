@@ -20,62 +20,19 @@
  * });
  * ```
  *
+ * Both helpers come from `@xtandard/kit/storage`; {@link pgListenNotify} keeps
+ * the entitlements default channel `"xtandard_entitlements"`.
+ *
  * @module
  */
 
-import type {
-  EntitlementsStorage,
-  StorageChangeEvent,
-  WatchableEntitlementsStorage,
-} from "./contract.ts";
+import {
+  pgListenNotify as kitPgListenNotify,
+  type PgNotificationClient,
+  type WatchSubscribe,
+} from "@xtandard/kit/storage";
 
-/**
- * A change source. Called with a `notify` callback — wire your source to invoke
- * it (optionally with the changed key) on every change — and return an
- * unsubscribe function (sync or async).
- */
-export type WatchSubscribe = (
-  notify: (key?: string) => void,
-) => (() => void | Promise<void>) | Promise<() => void | Promise<void>>;
-
-/**
- * Wrap a storage so it implements {@link WatchableEntitlementsStorage} using `subscribe`
- * as the change source. The wrapper delegates all reads/writes to `storage` and
- * only adds `watch`; keys not under the watched `prefix` are filtered out. A
- * notification without a key is delivered as a change to the prefix itself
- * (enough to trigger a refresh).
- */
-export function withWatch<S extends EntitlementsStorage>(
-  storage: S,
-  subscribe: WatchSubscribe,
-): S & WatchableEntitlementsStorage {
-  const watchable = Object.create(storage) as S & WatchableEntitlementsStorage;
-  watchable.watch = (prefix, callback) => {
-    const notify = (key?: string): void => {
-      if (key !== undefined && key !== "" && !key.startsWith(prefix)) return;
-      callback({
-        type: "update",
-        key: key && key !== "" ? key : prefix,
-      } satisfies StorageChangeEvent);
-    };
-    return Promise.resolve(subscribe(notify));
-  };
-  return watchable;
-}
-
-/**
- * A dedicated notification client for {@link pgListenNotify} — satisfied by a
- * `pg` `Client`. `Pool` won't do (it rotates connections); use a `Client` you
- * `connect()`.
- */
-export interface PgNotificationClient {
-  query(sql: string): Promise<unknown>;
-  on(event: "notification", listener: (msg: { channel: string; payload?: string }) => void): void;
-  removeListener(
-    event: "notification",
-    listener: (msg: { channel: string; payload?: string }) => void,
-  ): void;
-}
+export { withWatch, type PgNotificationClient, type WatchSubscribe } from "@xtandard/kit/storage";
 
 /**
  * A {@link WatchSubscribe} backed by Postgres `LISTEN`/`NOTIFY`. Pair with
@@ -95,15 +52,5 @@ export function pgListenNotify(
   client: PgNotificationClient,
   channel = "xtandard_entitlements",
 ): WatchSubscribe {
-  return async (notify) => {
-    const listener = (msg: { channel: string; payload?: string }): void => {
-      if (msg.channel === channel) notify(msg.payload);
-    };
-    client.on("notification", listener);
-    await client.query(`LISTEN "${channel.replace(/"/g, '""')}"`);
-    return async () => {
-      client.removeListener("notification", listener);
-      await client.query(`UNLISTEN "${channel.replace(/"/g, '""')}"`);
-    };
-  };
+  return kitPgListenNotify(client, channel);
 }

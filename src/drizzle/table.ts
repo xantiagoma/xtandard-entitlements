@@ -15,8 +15,7 @@
 
 import type { Column, Table } from "drizzle-orm";
 
-/** A table with the fixed `key`/`value` columns the entitlements KV store requires. */
-export type DrizzleKvTable = Table & { key: Column; value: Column };
+export type { DrizzleKvTable } from "@xtandard/kit/drizzle/pg";
 
 /**
  * A table with the fixed columns the Drizzle counter store requires: `key`

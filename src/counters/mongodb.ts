@@ -22,8 +22,8 @@
  */
 
 import type { Collection, Document, MongoClient } from "mongodb";
-import { isDuplicateKey, mongoConnection } from "../storage/mongodb.ts";
-import { escapeRegex } from "../storage/util.ts";
+import { escapeRegex } from "@xtandard/kit/storage";
+import { isDuplicateKey, mongoConnection } from "@xtandard/kit/storage/mongodb/internals";
 import { assertAmount, type CounterAddOptions, type CounterStore } from "./contract.ts";
 import { CLAIM_PREFIX } from "./sql.ts";
 
@@ -96,7 +96,10 @@ export function createMongoCounterStore(options: MongoCounterStoreOptions): Mong
     collectionName = "entitlements_counters",
     now = Date.now,
   } = options;
-  const connection = mongoConnection({ ...options, dbName }, "counters/mongodb");
+  const connection = mongoConnection(
+    { ...options, dbName },
+    "@xtandard/entitlements/counters/mongodb",
+  );
   let indexed: Promise<unknown> | undefined;
 
   async function collection(): Promise<Collection<CounterDoc>> {

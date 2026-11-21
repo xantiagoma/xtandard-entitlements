@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { PGlite } from "@electric-sql/pglite";
+import { afterAll, describe, expect, test } from "vitest";
 import {
   createPostgresStorage,
   postgresStorageSchema,
@@ -8,6 +9,11 @@ import { isCompareAndSwap } from "../src/storage/contract.ts";
 import { pglite, uniqueTable } from "./pglite.ts";
 import { runStorageContractTests } from "./storage-contract.ts";
 
+const CAPABILITIES = {
+  t: { describe, test, expect },
+  capabilities: { compareAndSwap: true, watch: false },
+};
+
 /**
  * Run the shared contract suite against the Postgres adapter, backed by an
  * in-process PGlite instance so no server is required and the tests always
@@ -16,68 +22,20 @@ import { runStorageContractTests } from "./storage-contract.ts";
 runStorageContractTests(
   "postgres (pglite)",
   async () => createPostgresStorage({ client: pglite(), table: uniqueTable("kv") }),
-  { compareAndSwap: true },
+  CAPABILITIES,
 );
 
 /** Adapter-specific behaviour against in-process PGlite. */
 describe("createPostgresStorage (pglite)", () => {
-  let storage: PostgresEntitlementsStorage;
-
-  beforeAll(() => {
-    storage = createPostgresStorage({ client: pglite(), table: uniqueTable("entitlements_test") });
-  });
-
-  test("round-trips a nested object value and is CAS-capable", async () => {
-    const value = { id: "org_1", revision: 3, subscriptions: [{ plan: "pro" }] };
-    await storage.setItem("ent/customers/org_1", value);
-    expect(await storage.getItem("ent/customers/org_1")).toEqual(value);
+  test("defaults to the xtandard_entitlements_kv table", async () => {
+    const client = new PGlite();
+    const storage = createPostgresStorage({ client });
+    await storage.setItem("ent/customers/org_1", { id: "org_1" });
+    const { rows } = await client.query<{ key: string }>(
+      "SELECT key FROM xtandard_entitlements_kv",
+    );
+    expect(rows.map((r) => r.key)).toEqual(["ent/customers/org_1"]);
     expect(isCompareAndSwap(storage)).toBe(true);
-  });
-
-  test("compareAndSwap compares jsonb structurally (key order is irrelevant)", async () => {
-    await storage.setItem("ent/cas/order", { a: 1, b: { c: [1, 2] } });
-    expect(
-      await storage.compareAndSwap({
-        key: "ent/cas/order",
-        expected: { b: { c: [1, 2] }, a: 1 },
-        next: { a: 2 },
-      }),
-    ).toBe(true);
-    expect(await storage.getItem("ent/cas/order")).toEqual({ a: 2 });
-  });
-
-  test("handles deeply nested keys", async () => {
-    await storage.setItem("ent/links/stripe/cus_1", "org_1");
-    expect(await storage.getKeys("ent/links/stripe/")).toEqual(["ent/links/stripe/cus_1"]);
-  });
-
-  test("parses string jsonb values defensively", async () => {
-    const client = {
-      query: async (text: string) =>
-        text.startsWith("SELECT")
-          ? { rows: [{ value: '{"x":1}' }, { value: "not json" }] }
-          : { rows: [] },
-    };
-    const s = createPostgresStorage({ client });
-    expect(await s.getItem("k")).toEqual({ x: 1 });
-  });
-
-  test("retries the DDL after a failure", async () => {
-    let fail = true;
-    const pg = pglite();
-    const table = uniqueTable();
-    const client = {
-      query: async (text: string, params?: unknown[]) => {
-        if (fail && text.startsWith("CREATE")) {
-          fail = false;
-          throw new Error("transient");
-        }
-        return pg.query(text, params) as Promise<{ rows: Array<Record<string, unknown>> }>;
-      },
-    };
-    const s = createPostgresStorage({ client, table });
-    await expect(s.getItem("k")).rejects.toThrow("transient");
-    expect(await s.getItem("k")).toBeNull();
   });
 });
 
@@ -118,13 +76,17 @@ describe.skipIf(!process.env.POSTGRES_URL)("createPostgresStorage (live)", () =>
       opened.push(s);
       return s;
     },
-    { compareAndSwap: true },
+    CAPABILITIES,
   );
 
   afterAll(async () => {
-    for (const s of opened) {
-      for (const key of await s.getKeys("")) await s.removeItem(key);
-      await s.close();
+    // A storage a case already closed can't run queries: drop the run's tables directly.
+    for (const s of opened) await s.close().catch(() => {});
+    const { Pool } = await import("pg");
+    const pool = new Pool({ connectionString: process.env.POSTGRES_URL });
+    for (let i = 0; i < n; i++) {
+      await pool.query(`DROP TABLE IF EXISTS xtandard_entitlements_test_${run}_${i}`);
     }
+    await pool.end();
   });
 });

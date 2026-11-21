@@ -30,12 +30,13 @@
 
 import { and, getTableName, inArray, sql, type Column, type SQL } from "drizzle-orm";
 import type { DrizzleCounterTable } from "../drizzle/table.ts";
+import { escapeGlob, escapeLike } from "@xtandard/kit/storage";
+import type { DrizzleDialect } from "@xtandard/kit/storage/drizzle";
 import {
   detectDrizzleDialect,
-  type DrizzleDialect,
+  prefixSuccessor,
   type DrizzleLikeDatabase,
-} from "../storage/drizzle.ts";
-import { escapeGlob, escapeLike } from "../storage/util.ts";
+} from "@xtandard/kit/storage/drizzle/internals";
 import { assertAmount, type CounterStore } from "./contract.ts";
 import { CLAIM_PREFIX, claimSql, counterAddSql, type CounterColumnRefs } from "./sql.ts";
 
@@ -60,6 +61,12 @@ export interface DrizzleCounterStore extends CounterStore {
   purgeExpired(): Promise<void>;
 }
 
+/** The kit's structural Drizzle db, plus the MySQL counter upsert's `execute`/`transaction`. */
+interface CounterDatabase extends DrizzleLikeDatabase {
+  execute?(query: SQL): PromiseLike<unknown>;
+  transaction?<T>(fn: (tx: CounterDatabase) => Promise<T>): Promise<T>;
+}
+
 /** Rows of a MySQL `SELECT` across driver result shapes (`[rows, fields]` or `rows`). */
 function selectRows(result: unknown): Array<Record<string, unknown>> {
   return (Array.isArray(result) ? result : []) as Array<Record<string, unknown>>;
@@ -71,9 +78,10 @@ function selectRows(result: unknown): Array<Record<string, unknown>> {
 export function createDrizzleCounterStore(
   options: DrizzleCounterStoreOptions,
 ): DrizzleCounterStore {
-  const db = options.db as DrizzleLikeDatabase;
+  const db = options.db as CounterDatabase;
   const { table } = options;
-  const dialect = options.dialect ?? detectDrizzleDialect(db);
+  const dialect =
+    options.dialect ?? detectDrizzleDialect(db, "@xtandard/entitlements/counters/drizzle");
   const now = options.now ?? Date.now;
   const mysql = dialect === "mysql";
   const q = (name: string): string => (mysql ? `\`${name}\`` : `"${name}"`);
@@ -85,6 +93,16 @@ export function createDrizzleCounterStore(
     expiresAt: ref(table.expiresAt),
   };
   const id = (col: Column) => sql.identifier(col.name);
+  /**
+   * MySQL prefixes as a bytewise range: an indexed `LIKE 'p%'` on a
+   * `utf8mb4_bin` key skips keys with supplementary characters (emoji).
+   */
+  const mysqlPrefixRange = (prefix: string): SQL => {
+    const end = prefixSuccessor(prefix);
+    return end === undefined
+      ? sql`${table.key} >= ${prefix}`
+      : sql`${table.key} >= ${prefix} and ${table.key} < ${end}`;
+  };
   const live = (t: number): SQL =>
     sql`(${table.expiresAt} is null or ${table.expiresAt} > ${sql.raw(String(Math.trunc(t)))})`;
 
@@ -186,7 +204,9 @@ export function createDrizzleCounterStore(
       const match =
         dialect === "sqlite"
           ? sql`${table.key} glob ${`${escapeGlob(prefix)}*`}`
-          : sql`${table.key} like ${`${escapeLike(prefix)}%`} escape '!'`;
+          : mysql
+            ? mysqlPrefixRange(prefix)
+            : sql`${table.key} like ${`${escapeLike(prefix)}%`} escape '!'`;
       const rows = (await db
         .select({ key: table.key })
         .from(table)
