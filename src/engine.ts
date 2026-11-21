@@ -355,6 +355,11 @@ export interface Entitlements<C extends AnyCatalog = AnyCatalog> {
   /** Release expired reservations. */
   sweep(): Promise<{ released: number }>;
   entitlements(customer: string): Promise<CustomerEntitlements>;
+  /**
+   * The customer's resolved set from the memory-first snapshot — no counter
+   * reads (plans, booleans, values, limits; no usage). For context enrichers.
+   */
+  resolve(customer: string): Promise<EntitlementSet & { stale?: boolean }>;
   customer(id: string): CustomerClient<C>;
 
   // control plane
@@ -1288,6 +1293,11 @@ export function createEntitlements<const C extends AnyCatalog>(
         stale = true;
       }
       return { ...snap.set, features, ...(stale ? { stale: true } : {}) };
+    },
+
+    async resolve(customer) {
+      const snap = await snapshot(customer);
+      return snap.stale ? { ...snap.set, stale: true } : snap.set;
     },
 
     customer: client,

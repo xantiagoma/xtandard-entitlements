@@ -88,14 +88,79 @@ export function runStorageContractTests(
       );
     });
 
-    test("LIKE metacharacters in prefixes match literally (% _ ! \\)", async () => {
+    test("keys with ? \\ ] : # stay distinct and round-trip (no normalization)", async () => {
       const storage = await makeStorage();
-      const keys = ["ent/p%/a", "ent/pX/b", "ent/p_/c", "ent/pY/d", "ent/p!/e", "ent/p\\/f"];
+      const keys = [
+        "ent/s/a?b",
+        "ent/s/ab",
+        "ent/s/a\\b",
+        "ent/s/a:b",
+        "ent/s/a]b",
+        "ent/s/a#b",
+        "ent/s/a/b",
+      ];
+      for (const [i, k] of keys.entries()) await storage.setItem(k, { i });
+      for (const [i, k] of keys.entries()) expect(await storage.getItem(k)).toEqual({ i });
+      expect((await storage.getKeys("ent/s/")).sort()).toEqual([...keys].sort());
+      expect(await storage.getKeys("ent/s/a?")).toEqual(["ent/s/a?b"]);
+      expect(await storage.getKeys("ent/s/a\\")).toEqual(["ent/s/a\\b"]);
+      expect(await storage.getKeys("ent/s/a]")).toEqual(["ent/s/a]b"]);
+    });
+
+    test("plain string prefixes inside a segment: % ? \\ : %25 (no namespace assumptions)", async () => {
+      const storage = await makeStorage();
+      const keys = [
+        "ent/n/a%y/1",
+        "ent/n/a%25y/2",
+        "ent/n/a?y/3",
+        "ent/n/a:y/4",
+        "ent/n/a\\y/5",
+        "ent/n/ab/6",
+      ];
+      for (const k of keys) await storage.setItem(k, 1);
+      expect((await storage.getKeys("ent/n/a")).sort()).toEqual([...keys].sort());
+      expect(await storage.getKeys("ent/n/a%y")).toEqual(["ent/n/a%y/1"]);
+      expect(await storage.getKeys("ent/n/a%25")).toEqual(["ent/n/a%25y/2"]);
+      expect(await storage.getKeys("ent/n/a?")).toEqual(["ent/n/a?y/3"]);
+      expect(await storage.getKeys("ent/n/a:")).toEqual(["ent/n/a:y/4"]);
+      expect(await storage.getKeys("ent/n/a\\")).toEqual(["ent/n/a\\y/5"]);
+      expect(await storage.getItem("ent/n/a%25y/2")).toBe(1);
+      expect(await storage.getItem("ent/n/a%y/2")).toBeNull();
+    });
+
+    test("keys are accent-sensitive (é ≠ e), raw and encoded", async () => {
+      const storage = await makeStorage();
+      await storage.setItem("ent/raw/café", { v: "accent" });
+      await storage.setItem("ent/raw/cafe", { v: "plain" });
+      await storage.setItem(customerKey("Zoë"), { v: "encoded" });
+      expect(await storage.getItem("ent/raw/café")).toEqual({ v: "accent" });
+      expect(await storage.getItem("ent/raw/cafe")).toEqual({ v: "plain" });
+      expect(await storage.getItem(customerKey("Zoe"))).toBeNull();
+      expect((await storage.getKeys("ent/raw/")).sort()).toEqual(
+        ["ent/raw/cafe", "ent/raw/café"].sort(),
+      );
+    });
+
+    test("LIKE / GLOB metacharacters in prefixes match literally (% _ ! \\ * [)", async () => {
+      const storage = await makeStorage();
+      const keys = [
+        "ent/p%/a",
+        "ent/pX/b",
+        "ent/p_/c",
+        "ent/pY/d",
+        "ent/p!/e",
+        "ent/p\\/f",
+        "ent/p*/g",
+        "ent/p[x]/h",
+        "ent/px]/i",
+      ];
       for (const k of keys) await storage.setItem(k, 1);
       expect(await storage.getKeys("ent/p%/")).toEqual(["ent/p%/a"]);
       expect(await storage.getKeys("ent/p_/")).toEqual(["ent/p_/c"]);
       expect(await storage.getKeys("ent/p!/")).toEqual(["ent/p!/e"]);
       expect(await storage.getKeys("ent/p\\/")).toEqual(["ent/p\\/f"]);
+      expect(await storage.getKeys("ent/p*/")).toEqual(["ent/p*/g"]);
+      expect(await storage.getKeys("ent/p[x]/")).toEqual(["ent/p[x]/h"]);
     });
   });
 
