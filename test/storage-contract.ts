@@ -88,14 +88,39 @@ export function runStorageContractTests(
       );
     });
 
-    test("LIKE metacharacters in prefixes match literally (% _ ! \\)", async () => {
+    test("keys are accent-sensitive (é ≠ e), raw and encoded", async () => {
       const storage = await makeStorage();
-      const keys = ["ent/p%/a", "ent/pX/b", "ent/p_/c", "ent/pY/d", "ent/p!/e", "ent/p\\/f"];
+      await storage.setItem("ent/raw/café", { v: "accent" });
+      await storage.setItem("ent/raw/cafe", { v: "plain" });
+      await storage.setItem(customerKey("Zoë"), { v: "encoded" });
+      expect(await storage.getItem("ent/raw/café")).toEqual({ v: "accent" });
+      expect(await storage.getItem("ent/raw/cafe")).toEqual({ v: "plain" });
+      expect(await storage.getItem(customerKey("Zoe"))).toBeNull();
+      expect((await storage.getKeys("ent/raw/")).sort()).toEqual(
+        ["ent/raw/cafe", "ent/raw/café"].sort(),
+      );
+    });
+
+    test("LIKE / GLOB metacharacters in prefixes match literally (% _ ! \\ * [)", async () => {
+      const storage = await makeStorage();
+      const keys = [
+        "ent/p%/a",
+        "ent/pX/b",
+        "ent/p_/c",
+        "ent/pY/d",
+        "ent/p!/e",
+        "ent/p\\/f",
+        "ent/p*/g",
+        "ent/p[x]/h",
+        "ent/px]/i",
+      ];
       for (const k of keys) await storage.setItem(k, 1);
       expect(await storage.getKeys("ent/p%/")).toEqual(["ent/p%/a"]);
       expect(await storage.getKeys("ent/p_/")).toEqual(["ent/p_/c"]);
       expect(await storage.getKeys("ent/p!/")).toEqual(["ent/p!/e"]);
       expect(await storage.getKeys("ent/p\\/")).toEqual(["ent/p\\/f"]);
+      expect(await storage.getKeys("ent/p*/")).toEqual(["ent/p*/g"]);
+      expect(await storage.getKeys("ent/p[x]/")).toEqual(["ent/p[x]/h"]);
     });
   });
 
