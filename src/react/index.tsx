@@ -24,7 +24,7 @@
  * enforce on the server with `ent.check()` / `ent.consume()` or the adapters'
  * `requireEntitlement` guards.
  *
- * @module react
+ * @module
  */
 
 import React from "react";

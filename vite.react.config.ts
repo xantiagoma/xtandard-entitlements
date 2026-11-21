@@ -22,7 +22,7 @@ export default defineConfig({
     emptyOutDir: false,
     cssCodeSplit: false,
     lib: {
-      entry: "src/react-embed.tsx",
+      entry: "src/entry-react-embed.ts",
       formats: ["es"],
       fileName: () => "react-embed.js",
     },

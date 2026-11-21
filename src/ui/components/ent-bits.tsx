@@ -16,7 +16,7 @@ import { cn } from "../lib/utils.ts";
 /* ─── BrandMark ─────────────────────────────────────────────────────────────── */
 
 /**
- * The brand symbol (docs/assets/symbol.svg) inlined so the embed bundle needs
+ * The transparent brand mark (docs/assets/symbol-{light,dark}.svg) inlined so the embed bundle needs
  * no asset: the lime X whose arm is a usage-gauge needle. The gradient and the
  * gauge track come from theme tokens (`--mark-*`), so the light-surface variant
  * (deeper lime) and the dark one (bright lime) follow the theme.

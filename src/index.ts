@@ -200,3 +200,54 @@ export type { Bucket, Leg, LegState, Take } from "./ledger.ts";
 // Key layout (custom adapters)
 export * as keys from "./keys.ts";
 export { newId } from "./id.ts";
+
+// Panel: fetch handler (admin + runtime + portal API, billing intake, SPA), OpenAPI
+export { createFetchHandler } from "./server/create-fetch-handler.ts";
+export type {
+  CreateFetchHandlerResult,
+  EntitlementsPanelOptions,
+} from "./server/create-fetch-handler.ts";
+export { API_ROUTES, buildOverview, catalogView } from "./server/routes.ts";
+export type {
+  CatalogView,
+  EntitlementsPortalOptions,
+  Overview,
+  PanelConfig,
+  PortalView,
+  RouteSpec,
+} from "./server/routes.ts";
+export { buildOpenApiDocument } from "./server/openapi.ts";
+export type { OpenApiOptions } from "./server/openapi.ts";
+export type { EntitlementsCorsOptions } from "./server/cors.ts";
+
+// Portal tokens (ADR 0010)
+export {
+  createPortalToken,
+  PORTAL_TOKEN_PREFIX,
+  PortalTokenError,
+  verifyPortalToken,
+} from "./portal.ts";
+export type { PortalAction, PortalTokenClaims, PortalTokenOptions } from "./portal.ts";
+
+// Auth / authorization contracts (providers live at /auth/* and /authorization/*)
+export type { AuthProvider, Principal } from "./auth/contract.ts";
+export {
+  ALL_ACTIONS,
+  isMutatingAction,
+  MUTATING_ACTIONS,
+  PORTAL_ACTIONS,
+} from "./authorization/contract.ts";
+export type {
+  AuthorizationProvider,
+  AuthorizeInput,
+  EntitlementsAction,
+  EntitlementsResource,
+} from "./authorization/contract.ts";
+
+// API input validation (valibot; admin path only)
+export { InputValidationError, parseInput } from "./validation.ts";
+export type { ValidationIssue } from "./validation.ts";
+
+// Framework-agnostic guard core (adapters wrap it)
+export { denialOf, denialResponse, evaluateGuard } from "./adapters/guard.ts";
+export type { GuardOutcome, RequireEntitlementOptions } from "./adapters/guard.ts";

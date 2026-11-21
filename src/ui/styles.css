@@ -87,11 +87,11 @@
   --chart-5: oklch(0.58 0.16 300);
   --chart-track: oklch(0.2 0.008 247 / 8%);
 
-  /* The brand mark on light surfaces (BRAND.md "Mark, light surfaces"). */
+  /* The transparent brand mark on light surfaces (docs/assets/symbol-light.svg). */
   --mark-1: #a3e635;
   --mark-2: #84cc16;
   --mark-3: #4d7c0f;
-  --mark-bracket: #5b6167;
+  --mark-bracket: #8b939c;
   --mark-track: #c4c9ce;
 
   --shadow-sm: 0 1px 2px oklch(0.2 0.02 247 / 0.06);
@@ -136,7 +136,7 @@
   --chart-5: oklch(0.72 0.15 300);
   --chart-track: oklch(1 0 0 / 9%);
 
-  /* The brand mark on dark surfaces (BRAND.md "Mark (X + gauge), dark surfaces"). */
+  /* The transparent brand mark on dark surfaces (docs/assets/symbol-dark.svg). */
   --mark-1: #d9f99d;
   --mark-2: #a3e635;
   --mark-3: #65a30d;

@@ -7,6 +7,6 @@
     "outDir": "dist/types-react",
     "rootDir": "src"
   },
-  "include": ["src/react-embed.tsx"],
+  "include": ["src/entry-react-embed.ts"],
   "exclude": ["dist", "node_modules", "test/**/*.bun.test.ts"]
 }

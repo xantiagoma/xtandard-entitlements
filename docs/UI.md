@@ -70,7 +70,7 @@ For your **product** UI. Plain React (18 or 19, an optional peer), no other depe
 
 > **Client-side gates are UX, not security.** They decide what to _show_. Anyone can flip a boolean
 > in devtools. Enforce on the server with `ent.check()` / `ent.consume()` or the adapters'
-> `requireEntitlement` guards ([HOOKS](./HOOKS.md), [ADR 0009](./ADR/0009-decisions-and-denials.md)).
+> `requireEntitlement` guards ([ADAPTERS](./ADAPTERS.md), [ADR 0009](./ADR/0009-decisions-and-denials.md)).
 
 ```tsx
 import {

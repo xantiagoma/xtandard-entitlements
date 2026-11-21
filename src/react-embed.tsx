@@ -20,7 +20,7 @@
  * `useEntitlement`, `<UsageMeter>`), use the much smaller
  * `@xtandard/entitlements/react` instead.
  *
- * @module react/embed
+ * @module
  */
 
 import React from "react";
