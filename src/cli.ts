@@ -12,8 +12,20 @@
  * @module
  */
 
-import type { AuthProvider } from "./auth/contract.ts";
-import type { AuthorizationProvider } from "./authorization/contract.ts";
+import {
+  buildAuthFromEnv,
+  describeStorage,
+  env,
+  isMainModule,
+  parseArgs as kitParseArgs,
+  pkgVersion as kitPkgVersion,
+  resolveStorageConfig,
+  serve as kitServe,
+  storageFromEnv,
+  storageRegistryFrom,
+  type StorageConfig,
+  type StorageRole,
+} from "@xtandard/kit/cli";
 import type { AnyCatalog, JsonValue } from "./catalog.ts";
 import type { CounterStore } from "./counters/contract.ts";
 import type { Duration } from "./duration.ts";
@@ -60,34 +72,62 @@ const COUNTERS_DRIVERS: readonly CountersDriver[] = [
   "libsql",
 ];
 
-const env = (key: string, fallback = ""): string => process.env[key] || fallback;
-
-const isTruthy = (value: string): boolean => value === "1" || value.toLowerCase() === "true";
-
 /** The actor recorded for CLI-made control-plane changes. */
 const CLI_ACTOR: Actor = { id: "cli", type: "system", name: "xtandard-entitlements CLI" };
 
 /**
- * Import one of this package's own subpath entries (`storage-redis`,
- * `counters-postgres`, …) lazily, so optional peers load only when chosen. Run
- * from TypeScript source (tests, the standalone app) the entry is
- * `./entry-<name>.ts`; compiled, it is the sibling `./entry-<name>.mjs`.
+ * The state-storage role. Its defaults are the persisted names earlier
+ * releases used (ADR 0005); each `STORAGE_*` env var still overrides them.
  */
-async function importEntry<T>(name: string): Promise<T> {
+const STORAGE_ROLE: StorageRole = {
+  name: "STORAGE",
+  defaults: {
+    driver: "file",
+    prefix: "xtandard:entitlements",
+    pgTable: "xtandard_entitlements_kv",
+    mongoDb: "xtandard_entitlements",
+    mongoCollection: "entitlements_kv",
+    sqlitePath: "./.entitlements/state.sqlite",
+    sqliteTable: "xtandard_entitlements_kv",
+    libsqlUrl: "file:./.entitlements/state.db",
+    fileDir: "./.entitlements/state",
+  },
+};
+
+/**
+ * The counters role (`COUNTERS_DRIVER`, `COUNTERS_*`). Tables and collections
+ * default to the counter factories' own names when their env vars are unset.
+ */
+const COUNTERS_ROLE: StorageRole = {
+  name: "COUNTERS",
+  driverEnv: "COUNTERS_DRIVER",
+  defaults: {
+    prefix: "xtandard:entitlements:counters",
+    mongoDb: "xtandard_entitlements",
+    sqlitePath: "./.entitlements/counters.sqlite",
+    libsqlUrl: "file:./.entitlements/counters.db",
+  },
+};
+
+/**
+ * This package's own wrapped drivers (its persisted defaults and import paths),
+ * loaded lazily so optional peers load only when chosen. Run from TypeScript
+ * source (tests, the standalone app) the entries are `./entry-*.ts`; compiled,
+ * the sibling `./entry-*.mjs`.
+ */
+const entry = (name: string) => (): Promise<unknown> => {
   const ext = import.meta.url.endsWith(".ts") ? ".ts" : ".mjs";
-  const specifier = new URL(`./entry-${name}${ext}`, import.meta.url).href;
-  try {
-    return (await import(/* @vite-ignore */ specifier)) as T;
-  } catch (err) {
-    const code = (err as { code?: string }).code;
-    if (code === "ERR_MODULE_NOT_FOUND" || /Cannot find module/i.test(String(err))) {
-      throw new Error(
-        `The "${name.replace("-", "/")}" driver is not available in this build (${String(err)}).`,
-      );
-    }
-    throw err;
-  }
-}
+  return import(/* @vite-ignore */ new URL(`./entry-${name}${ext}`, import.meta.url).href);
+};
+const STORAGE_REGISTRY = storageRegistryFrom({
+  memory: entry("storage-memory"),
+  file: entry("storage-file"),
+  redis: entry("storage-redis"),
+  postgres: entry("storage-postgres"),
+  mongodb: entry("storage-mongodb"),
+  sqlite: entry("storage-sqlite"),
+  libsql: entry("storage-libsql"),
+});
 
 /** Options shared by every command: where the catalog / state / counters come from. */
 export interface CliEnvironment {
@@ -108,73 +148,24 @@ function pickDriver<T extends string>(
   throw new Error(`Unknown ${name} "${value}" (expected one of: ${allowed.join(", ")})`);
 }
 
+/** The process env with one role's driver variable set to `driver`. */
+const withDriver = (role: StorageRole, driver: string) => ({
+  ...process.env,
+  [role.driverEnv ?? `${role.name}_DRIVER`]: driver,
+});
+
 /**
  * Build the state storage from env (`STORAGE_DRIVER`, default `file` —
  * `./.entitlements/state`). Connection-string drivers read `REDIS_URL`,
  * `DATABASE_URL` / `POSTGRES_URL`, `MONGO_URL`, `LIBSQL_URL`, ….
  */
 export async function buildStorage(driver: StorageDriver): Promise<EntitlementsStorage> {
-  switch (driver) {
-    case "memory": {
-      const { createMemoryStorage } = await import("./storage/memory.ts");
-      return createMemoryStorage();
-    }
-    case "redis": {
-      const m = await importEntry<{ createRedisStorage(o: object): EntitlementsStorage }>(
-        "storage-redis",
-      );
-      return m.createRedisStorage({
-        url: env("REDIS_URL", "redis://localhost:6379"),
-        prefix: env("STORAGE_PREFIX", "xtandard:entitlements"),
-      });
-    }
-    case "postgres": {
-      const m = await importEntry<{ createPostgresStorage(o: object): EntitlementsStorage }>(
-        "storage-postgres",
-      );
-      return m.createPostgresStorage({
-        connectionString:
-          env("DATABASE_URL") || env("POSTGRES_URL", "postgres://localhost:5432/postgres"),
-        table: env("STORAGE_PG_TABLE", "xtandard_entitlements_kv"),
-      });
-    }
-    case "mongodb": {
-      const m = await importEntry<{ createMongoStorage(o: object): EntitlementsStorage }>(
-        "storage-mongodb",
-      );
-      return m.createMongoStorage({
-        url: env("MONGO_URL", "mongodb://localhost:27017"),
-        dbName: env("MONGO_DB", "xtandard_entitlements"),
-        collectionName: env("STORAGE_MONGO_COLLECTION", "entitlements_kv"),
-      });
-    }
-    case "sqlite": {
-      // Requires running the CLI under Bun (`bunx xtandard-entitlements …`).
-      const m = await importEntry<{ createSqliteStorage(o: object): EntitlementsStorage }>(
-        "storage-sqlite",
-      );
-      return m.createSqliteStorage({
-        path: env("STORAGE_SQLITE_PATH", "./.entitlements/state.sqlite"),
-      });
-    }
-    case "libsql": {
-      const m = await importEntry<{ createLibsqlStorage(o: object): EntitlementsStorage }>(
-        "storage-libsql",
-      );
-      const authToken = env("LIBSQL_AUTH_TOKEN");
-      return m.createLibsqlStorage({
-        url: env("LIBSQL_URL", "file:./.entitlements/state.db"),
-        ...(authToken ? { authToken } : {}),
-      });
-    }
-    case "file":
-    default: {
-      const m = await importEntry<{ createFileStorage(o: object): EntitlementsStorage }>(
-        "storage-file",
-      );
-      return m.createFileStorage({ dir: env("STORAGE_FILE_DIR", "./.entitlements/state") });
-    }
-  }
+  return storageFromEnv<EntitlementsStorage>({
+    role: STORAGE_ROLE,
+    drivers: STORAGE_REGISTRY as never,
+    env: withDriver(STORAGE_ROLE, driver),
+    allowed: STORAGE_DRIVERS,
+  });
 }
 
 /**
@@ -194,11 +185,39 @@ export async function buildCounters(
       "[xtandard/entitlements] counters: memory (the storage has no compare-and-swap) — usage is not persisted. Set COUNTERS_DRIVER.\n",
     );
   }
-  return { counters: await counterStore(chosen, storage), driver: chosen };
+  const config = resolveStorageConfig(COUNTERS_ROLE, {
+    env: withDriver(COUNTERS_ROLE, chosen),
+    allowed: COUNTERS_DRIVERS,
+  });
+  return { counters: await counterStore(chosen, config, storage), driver: chosen };
+}
+
+/** Load one of this package's counter entries and call its factory. */
+async function counterEntry(
+  name: string,
+  factory: string,
+  options: Record<string, unknown>,
+): Promise<CounterStore> {
+  let mod: Record<string, (o: Record<string, unknown>) => CounterStore>;
+  try {
+    mod = (await entry(name)()) as typeof mod;
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    if (code === "ERR_MODULE_NOT_FOUND" || /Cannot find module/i.test(String(err))) {
+      throw new Error(
+        `The "${name.replace("-", "/")}" driver is not available in this build (${String(err)}).`,
+      );
+    }
+    throw err;
+  }
+  return mod[factory]!(
+    Object.fromEntries(Object.entries(options).filter(([, v]) => v !== undefined)),
+  );
 }
 
 async function counterStore(
   chosen: CountersDriver,
+  c: StorageConfig,
   storage: EntitlementsStorage,
 ): Promise<CounterStore> {
   switch (chosen) {
@@ -210,55 +229,33 @@ async function counterStore(
       const { createKvCounterStore } = await import("./counters/kv.ts");
       return createKvCounterStore(storage);
     }
-    case "redis": {
-      const m = await importEntry<{ createRedisCounterStore(o: object): CounterStore }>(
-        "counters-redis",
-      );
-      return m.createRedisCounterStore({
-        url: env("REDIS_URL", "redis://localhost:6379"),
-        prefix: env("COUNTERS_PREFIX", "xtandard:entitlements:counters"),
+    case "redis":
+      return counterEntry("counters-redis", "createRedisCounterStore", {
+        url: c.redisUrl,
+        prefix: c.prefix,
       });
-    }
-    case "postgres": {
-      const m = await importEntry<{ createPostgresCounterStore(o: object): CounterStore }>(
-        "counters-postgres",
-      );
-      return m.createPostgresCounterStore({
-        connectionString:
-          env("DATABASE_URL") || env("POSTGRES_URL", "postgres://localhost:5432/postgres"),
-        ...(env("COUNTERS_PG_TABLE") ? { table: env("COUNTERS_PG_TABLE") } : {}),
+    case "postgres":
+      return counterEntry("counters-postgres", "createPostgresCounterStore", {
+        connectionString: c.postgresUrl,
+        table: c.pgTable,
       });
-    }
-    case "mongodb": {
-      const m = await importEntry<{ createMongoCounterStore(o: object): CounterStore }>(
-        "counters-mongodb",
-      );
-      return m.createMongoCounterStore({
-        url: env("MONGO_URL", "mongodb://localhost:27017"),
-        dbName: env("MONGO_DB", "xtandard_entitlements"),
-        ...(env("COUNTERS_MONGO_COLLECTION")
-          ? { collectionName: env("COUNTERS_MONGO_COLLECTION") }
-          : {}),
+    case "mongodb":
+      return counterEntry("counters-mongodb", "createMongoCounterStore", {
+        url: c.mongoUrl,
+        dbName: c.mongoDb,
+        collectionName: c.mongoCollection,
       });
-    }
-    case "sqlite": {
-      const m = await importEntry<{ createSqliteCounterStore(o: object): CounterStore }>(
-        "counters-sqlite",
-      );
-      return m.createSqliteCounterStore({
-        path: env("COUNTERS_SQLITE_PATH", "./.entitlements/counters.sqlite"),
+    case "sqlite":
+      return counterEntry("counters-sqlite", "createSqliteCounterStore", {
+        path: c.sqlitePath,
+        table: c.sqliteTable,
       });
-    }
-    case "libsql": {
-      const m = await importEntry<{ createLibsqlCounterStore(o: object): CounterStore }>(
-        "counters-libsql",
-      );
-      const authToken = env("LIBSQL_AUTH_TOKEN");
-      return m.createLibsqlCounterStore({
-        url: env("COUNTERS_LIBSQL_URL") || env("LIBSQL_URL", "file:./.entitlements/counters.db"),
-        ...(authToken ? { authToken } : {}),
+    case "libsql":
+      return counterEntry("counters-libsql", "createLibsqlCounterStore", {
+        url: c.libsqlUrl,
+        authToken: c.libsqlAuthToken,
+        table: c.sqliteTable,
       });
-    }
   }
 }
 
@@ -284,144 +281,18 @@ export async function loadCatalog(path: string): Promise<AnyCatalog> {
   );
 }
 
-/** A human-readable, log-safe description of where state lives (never prints URLs). */
-async function describe(storage: StorageDriver, counters: string): Promise<string> {
-  const { resolve } = await import("node:path");
-  const where =
-    storage === "file"
-      ? `file → ${resolve(env("STORAGE_FILE_DIR", "./.entitlements/state"))}`
-      : storage === "sqlite"
-        ? `sqlite → ${resolve(env("STORAGE_SQLITE_PATH", "./.entitlements/state.sqlite"))}`
-        : storage === "memory"
-          ? "memory (ephemeral — not persisted)"
-          : storage;
-  return `storage: ${where} · counters: ${counters}`;
-}
-
-/** Build the auth + authorization providers from env (mirrors the standalone app). */
-async function buildAuth(): Promise<{ auth: AuthProvider; authorization: AuthorizationProvider }> {
-  const mode = env("AUTH_MODE", "none");
-  if (mode === "basic") {
-    const [{ basicAuth }, { rolesAuthorization }] = await Promise.all([
-      import("./auth/basic.ts"),
-      import("./authorization/roles.ts"),
-    ]);
-    const passwordHash = env("AUTH_PASSWORD_HASH");
-    const password = env("AUTH_PASSWORD");
-    if (!passwordHash && !password) {
-      process.stderr.write(
-        "[xtandard/entitlements] AUTH_MODE=basic but neither AUTH_PASSWORD_HASH nor AUTH_PASSWORD is set.\n",
-      );
-    }
-    return {
-      auth: basicAuth({
-        realm: "xtandard-entitlements",
-        users: [
-          {
-            username: env("AUTH_USERNAME", "admin"),
-            ...(passwordHash ? { passwordHash } : {}),
-            ...(password ? { password } : {}),
-            roles: [env("AUTH_ROLE", "admin")],
-          },
-        ],
-      }),
-      authorization: rolesAuthorization({}),
-    };
-  }
-  if (mode !== "none") throw new Error(`Unknown AUTH_MODE "${mode}" (expected none or basic)`);
-  const [{ noAuth }, { noAuthorization }] = await Promise.all([
-    import("./auth/none.ts"),
-    import("./authorization/none.ts"),
-  ]);
-  return { auth: noAuth(), authorization: noAuthorization() };
-}
-
-type FetchHandler = (request: Request) => Response | Promise<Response>;
-
-/**
- * Serve a web-standard fetch handler under whatever runtime the CLI runs on:
- * `Bun.serve` under `bunx`, a `node:http` bridge under `npx` / Node. Resolves
- * once listening.
- */
-async function startServer(port: number, fetch: FetchHandler): Promise<void> {
-  const bun = (globalThis as { Bun?: { serve: (options: unknown) => unknown } }).Bun;
-  if (bun) {
-    bun.serve({ port, fetch });
-    return;
-  }
-  const { createServer } = await import("node:http");
-  const server = createServer((req, res) => {
-    void (async () => {
-      try {
-        const chunks: Buffer[] = [];
-        for await (const c of req) chunks.push(c as Buffer);
-        const method = req.method ?? "GET";
-        const headers = new Headers();
-        for (const [k, v] of Object.entries(req.headers)) {
-          if (v === undefined) continue;
-          headers.set(k, Array.isArray(v) ? v.join(", ") : v);
-        }
-        const host = req.headers.host ?? `localhost:${port}`;
-        const hasBody = method !== "GET" && method !== "HEAD" && chunks.length > 0;
-        const response = await fetch(
-          new Request(`http://${host}${req.url ?? "/"}`, {
-            method,
-            headers,
-            body: hasBody ? Buffer.concat(chunks) : undefined,
-          }),
-        );
-        res.statusCode = response.status;
-        response.headers.forEach((value, key) => res.setHeader(key, value));
-        res.end(Buffer.from(await response.arrayBuffer()));
-      } catch (err) {
-        res.statusCode = 500;
-        res.end(`Internal error: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    })();
-  });
-  await new Promise<void>((resolve) => server.listen(port, resolve));
-}
-
 /** Minimal flag/value argv parser: `--key value`, `--key=value` and `--flag`. */
 export function parseArgs(argv: string[]): {
   _: string[];
   flags: Record<string, string | boolean>;
 } {
-  const _: string[] = [];
-  const flags: Record<string, string | boolean> = {};
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i]!;
-    if (a.startsWith("--")) {
-      const eq = a.indexOf("=");
-      if (eq > 2) {
-        flags[a.slice(2, eq)] = a.slice(eq + 1);
-        continue;
-      }
-      const key = a.slice(2);
-      const next = argv[i + 1];
-      if (next === undefined || next.startsWith("--")) flags[key] = true;
-      else {
-        flags[key] = next;
-        i++;
-      }
-    } else _.push(a);
-  }
-  return { _, flags };
+  // `--version 1` is `subscribe`'s plan version: no flag is boolean-only here.
+  const { _, flags } = kitParseArgs(argv, { short: {}, boolean: [] });
+  return { _: [..._], flags: { ...flags } };
 }
 
 /** Read this package's version from the nearest package.json (dist or src). */
-async function pkgVersion(): Promise<string> {
-  try {
-    const { readFile } = await import("node:fs/promises");
-    const { fileURLToPath } = await import("node:url");
-    const pkg = JSON.parse(
-      await readFile(fileURLToPath(new URL("../package.json", import.meta.url)), "utf8"),
-    ) as { version?: string };
-    return pkg.version ?? "unknown";
-  } catch {
-    return "unknown";
-  }
-}
+const pkgVersion = (): Promise<string> => kitPkgVersion(import.meta.url);
 
 function helpText(version: string): string {
   return `xtandard-entitlements v${version} — entitlements, plans and usage metering
@@ -759,44 +630,47 @@ async function serve(input: {
   flags: Record<string, string | boolean>;
 }): Promise<number> {
   const { flags } = input;
-  const port = Number(str(flags.port) || env("PORT", "3000"));
-  const basePath = env("BASE_PATH", "");
-  const title = env("TITLE", "@xtandard/entitlements");
-  const logoUrl = env("LOGO_URL");
-  const readonly = isTruthy(env("READONLY"));
+  const portFlag = str(flags.port);
   const portalSecret = env("PORTAL_SECRET");
   const sweep = env("SWEEP_INTERVAL", "1m");
 
   const { createFetchHandler } = await import("./server/create-fetch-handler.ts");
-  const { auth, authorization } = await buildAuth();
-  if (env("AUTH_MODE", "none") === "none") {
-    process.stderr.write(
-      "[xtandard/entitlements] AUTH_MODE=none — do NOT expose this publicly without authentication.\n",
-    );
-  }
-
-  const panel = createFetchHandler({
-    catalog: input.catalog,
-    storage: input.storage,
-    counters: input.counters,
-    basePath,
-    title,
-    ...(logoUrl ? { logoUrl } : {}),
-    readonly,
-    auth,
-    authorization,
-    ...(portalSecret ? { portal: { secret: portalSecret } } : {}),
-    ...(sweep !== "0" ? { sweepInterval: sweep as Duration } : {}),
+  const { DEFAULT_ROLE_POLICY } = await import("./authorization/roles.ts");
+  const { isMutatingAction } = await import("./authorization/contract.ts");
+  const { auth, authorization } = await buildAuthFromEnv({
+    realm: "xtandard-entitlements",
+    roles: { policy: DEFAULT_ROLE_POLICY, actions: { isMutatingAction } },
+    name: "xtandard/entitlements",
   });
 
-  process.stdout.write(
-    `[xtandard/entitlements] ${await describe(input.storageDriver, input.chosenCounters)}\n`,
-  );
-  await startServer(port, panel.fetch);
-  const normalizedBase = basePath && basePath !== "/" ? `/${basePath.replace(/^\/|\/$/g, "")}` : "";
-  process.stdout.write(
-    `[xtandard/entitlements] listening on http://localhost:${port}${normalizedBase || "/"}\n`,
-  );
-  // The server owns the process now; never resolve so the bin doesn't exit.
-  return await new Promise<number>(() => {});
+  return await kitServe({
+    name: "xtandard/entitlements",
+    ...(portFlag ? { port: Number(portFlag) } : {}),
+    buildPanel: async ({ basePath, title, logoUrl, readonly }) =>
+      createFetchHandler({
+        catalog: input.catalog,
+        storage: input.storage,
+        counters: input.counters,
+        basePath,
+        title: title ?? "@xtandard/entitlements",
+        ...(logoUrl ? { logoUrl } : {}),
+        readonly,
+        auth,
+        authorization,
+        ...(portalSecret ? { portal: { secret: portalSecret } } : {}),
+        ...(sweep !== "0" ? { sweepInterval: sweep as Duration } : {}),
+      }),
+    banner: async () => [
+      `storage: ${await describeStorage(STORAGE_ROLE, {
+        env: withDriver(STORAGE_ROLE, input.storageDriver),
+        allowed: STORAGE_DRIVERS,
+      })} · counters: ${input.chosenCounters}`,
+    ],
+  });
+}
+
+// Run when executed directly (`bun src/cli.ts`, `node dist/cli.mjs`); the bin
+// wrapper, the standalone app and tests import `run` instead.
+if (isMainModule({ url: import.meta.url })) {
+  run(process.argv.slice(2)).then((code) => process.exit(code));
 }
