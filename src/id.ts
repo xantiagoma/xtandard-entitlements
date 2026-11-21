@@ -1,23 +1,23 @@
 /**
  * Time-sortable ids with a type prefix (`sub_`, `grt_`, `ovr_`, `rsv_`, `act_`):
- * 10 chars of millisecond timestamp + 12 random chars, Crockford base32. Zero
- * dependencies (Web Crypto).
+ * 10 chars of millisecond timestamp + 12 random chars, Crockford base32.
+ *
+ * The generator is `createIdGenerator({ format: "ulid-lower22" })` from
+ * `@xtandard/kit/util`: the persisted format is unchanged, and ids are now
+ * monotonic within one millisecond.
  *
  * @module
  */
 
-const ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz";
+import { createIdGenerator } from "@xtandard/kit/util";
 
-/** A new id: `prefix` + `_` + 22 lowercase base32 chars (sorts by creation time). */
+const ids = createIdGenerator({ format: "ulid-lower22" });
+
+/**
+ * A new id: `prefix` + `_` + 22 lowercase base32 chars (sorts by creation time).
+ * `now` (unix ms) defaults to `Date.now()`; ids minted in the same millisecond
+ * (or under a clock that went backwards) still sort in creation order.
+ */
 export function newId(prefix: string, now: number = Date.now()): string {
-  let time = "";
-  let t = Math.max(0, Math.floor(now));
-  for (let i = 0; i < 10; i++) {
-    time = ALPHABET[t % 32] + time;
-    t = Math.floor(t / 32);
-  }
-  const bytes = crypto.getRandomValues(new Uint8Array(12));
-  let rand = "";
-  for (const b of bytes) rand += ALPHABET[b % 32];
-  return `${prefix}_${time}${rand}`;
+  return ids.newId(prefix, now);
 }
