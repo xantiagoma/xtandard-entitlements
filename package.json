@@ -584,6 +584,7 @@
     "examples:express": "bun scripts/example.ts express",
     "examples:bun": "bun scripts/example.ts bun",
     "examples:next": "bun scripts/example.ts next",
+    "examples:react-app": "bun scripts/example.ts react-app",
     "examples:stripe-webhooks": "bun scripts/example.ts stripe-webhooks",
     "examples:ai-credits": "bun scripts/example.ts ai-credits",
     "examples:flags-bridge": "bun scripts/example.ts flags-bridge",

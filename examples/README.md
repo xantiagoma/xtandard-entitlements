@@ -15,6 +15,7 @@ customers ([`shared/seed.ts`](./shared/seed.ts)).
 | [`express/`](./express)                 | The same with Express 5 (panel mounted **before** the body parser).                                         |
 | [`bun/`](./bun)                         | No framework: `Bun.serve` routes, `requireEntitlement(…)(handler)`.                                         |
 | [`next/`](./next)                       | Next.js App Router: `toNextHandler` catch-all, `withEntitlement` route handlers, a server action.           |
+| [`react-app/`](./react-app)             | Vite + React: provider, `<Gate>`, `<UsageMeter>`, `<PricingTable>`, `<UpgradePrompt>`, `<CustomerPortal>`.  |
 | [`stripe-webhooks/`](./stripe-webhooks) | Stripe billing: signed events (no network) land as plan changes; duplicates, out-of-order, legacy prices.   |
 | [`ai-credits/`](./ai-credits)           | LLM tokens against a credit pool: `reserve` / `settle`, `onThreshold` alerts, expiry sweep, top-ups.        |
 | [`flags-bridge/`](./flags-bridge)       | `@xtandard/flags` rules targeting `plan` / `entitlement.*` via an OpenFeature hook; entitlements as flags.  |
@@ -36,14 +37,15 @@ bun run examples:hono --demo           # its non-interactive demo; exits 0 on su
 bun run examples:demos                 # every demo, one after another
 ```
 
-Names: `hono`, `elysia`, `elysia2`, `express`, `bun`, `next`, `stripe-webhooks`, `ai-credits`,
-`flags-bridge`, `postgres-redis`, `storage-drivers`.
+Names: `hono`, `elysia`, `elysia2`, `express`, `bun`, `next`, `react-app`, `stripe-webhooks`,
+`ai-credits`, `flags-bridge`, `postgres-redis`, `storage-drivers`.
 
 In this repo the examples run **from source** — no build, no per-example install:
 [`tsconfig.json`](./tsconfig.json) maps every `@xtandard/entitlements/*` import to `src/` (Bun honors
 tsconfig `paths` at runtime, and `bun run typecheck:examples` checks them), and framework packages
-resolve from the root `node_modules`. Two exceptions: `next` installs Next.js into the example on
-first run, and `elysia2` runs with its own tsconfig so `elysia` resolves to Elysia 2. The admin UI
+resolve from the root `node_modules`. Exceptions: `next` installs Next.js into the example on first
+run, `elysia2` runs with its own tsconfig so `elysia` resolves to Elysia 2, and `react-app`'s
+`vite.config.ts` aliases the React entry points to `src/` (Vite doesn't read tsconfig `paths`). The admin UI
 is a built bundle — run `bun run build` once to see it; the APIs and demos work without it.
 
 ## Copying an example out

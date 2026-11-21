@@ -28,6 +28,10 @@ interactive servers: nothing checks in CI that they still work against the curre
   has no `next`) and points Turbopack and its own tsconfig at the source; **`elysia2`** runs with
   `bun --tsconfig-override=tsconfig.json` so `elysia` resolves to the root `elysia-v2` alias for
   both the example and the adapter source.
+  **`react-app`** is a Vite app, and Vite does not read tsconfig `paths`: its `vite.config.ts`
+  aliases the `@xtandard/entitlements/react*` imports to `src/` and builds the embed's Tailwind
+  stylesheet from source, scoped as the package build scopes `dist/react.css` (only when it finds
+  the repo's `src/`, so a copied-out app uses the installed package unchanged).
 - **Every example has `src/demo.ts`**: a non-interactive, end-to-end script that exits 0 —
   in-process through `app.fetch` / `app.handle` where the framework allows, over a port-0 server
   otherwise. `bun run examples:<name> --demo` runs one; `bun run examples:demos` runs them all.
