@@ -13,14 +13,15 @@ what makes it this project.
 
 ## Files
 
-**Everything users see on a page uses the SVGs**: the README header, the docs site (navbar, hero,
+**Everything users see on a page uses the SVGs, and no page shows the square tile**: the README header, the docs site (navbar, hero,
 favicon), the admin UI, the customer portal and the React embeds. Rasters exist only where a format
 cannot take SVG, and nobody sees them as an icon on a page.
 
 | File                                                   | What it is                                                               | Use it for                                                                                                               |
 | ------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `logo.svg`                                             | App icon: the mark on a near-black rounded square with faint orbit lines | The docs-site hero; anywhere a square app icon is wanted                                                                 |
-| `symbol.svg`                                           | The mark with brackets, transparent                                      | Inline UI (the admin and portal header — inlined in the bundle), places that draw their own surface                      |
+| `logo.svg`                                             | App icon: the mark on a near-black rounded square with faint orbit lines | Only where an app-icon shape is expected (avatars, registries) — never displayed on our pages                            |
+| `symbol-dark.svg`, `symbol-light.svg`                  | The mark with brackets, transparent (no tile), tuned per surface         | Every standalone mark on a page: the docs-site hero (theme-aware), the admin UI / portal / embeds header                 |
+| `symbol.svg`                                           | The same mark with neutral greys, readable on both                       | Where one file must serve both themes                                                                                    |
 | `lockup-horizontal-dark.svg`                           | Mark + wordmark, `xtandard-` in near-white                               | Headers on dark backgrounds (README in GitHub dark mode, the docs site in dark mode)                                     |
 | `lockup-horizontal-light.svg`                          | Mark + wordmark, `xtandard-` in ink, deeper lime                         | Headers on light backgrounds (README in light mode and on npm, the docs site in light mode)                              |
 | `lockup-stacked-{dark,light}.svg`                      | Mark left, `xtandard-` over `entitlements`                               | Square-ish slots: slides, sidebars                                                                                       |
@@ -48,11 +49,12 @@ sh scripts/brand-assets.sh                                      # social.png, ap
 - **README header**: a `<picture>` choosing `lockup-horizontal-dark.svg` / `lockup-horizontal-light.svg`
   with `prefers-color-scheme`, by absolute `raw.githubusercontent.com` URL (the README ships to npm,
   which does not ship `docs/`).
-- **Docs site**: the horizontal lockups as the Starlight logo (light/dark), `logo.svg` in the hero,
+- **Docs site**: the horizontal lockups as the Starlight logo (light/dark), `symbol-dark.svg` /
+  `symbol-light.svg` as the theme-aware hero,
   `favicon.svg` first then `favicon.ico` + `apple-touch-icon.png` in `<head>`, and `social.png` as
   `og:image`.
-- **Admin UI, portal and embeds**: `symbol.svg` inlined in the header next to the title (or the
-  host's `logoUrl`), `favicon.svg` (+ the two fallbacks) in `index.html`.
+- **Admin UI, portal and embeds**: the symbol inlined in the header next to the title, recoloured per
+  theme like `symbol-dark.svg` / `symbol-light.svg` (or the host's `logoUrl`), `favicon.svg` (+ the two fallbacks) in `index.html`.
 
 ## Palette
 
@@ -109,7 +111,8 @@ Do:
 
 - Use the dark lockup on dark backgrounds and the light one on light; on GitHub switch with
   `<picture>` and `prefers-color-scheme`.
-- Use `logo.svg` wherever a square icon is expected; the monochrome lockups on photos or in print.
+- Keep the tile (`logo.svg`, favicon set, social card) for app-icon slots only; on pages use the
+  transparent symbol or a lockup; the monochrome lockups on photos or in print.
 - Use the SVGs on pages; add a raster only where a format requires it (og:image, `<head>` fallbacks).
 
 Don't:
