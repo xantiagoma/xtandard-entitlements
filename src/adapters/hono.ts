@@ -20,6 +20,7 @@
  * @module
  */
 
+import { mountPanel } from "@xtandard/kit/adapters/hono";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import type { AnyCatalog, FeatureKey } from "../catalog.ts";
 import type { Entitlements } from "../engine.ts";
@@ -43,8 +44,7 @@ export function entitlementsPanel<const C extends AnyCatalog = AnyCatalog>(
   options: EntitlementsPanelOptions<C>,
 ): HonoEntitlementsPanel<C> {
   const handler = createFetchHandler(options);
-  const app = new Hono();
-  app.all("*", (c) => handler.fetch(c.req.raw));
+  const app = mountPanel(new Hono(), handler.fetch);
   return Object.assign(app, {
     engine: handler.engine,
     openapi: handler.openapi,
