@@ -7,7 +7,7 @@
 ## Context
 
 For flags and webhooks, React means "embed the admin". For entitlements the everyday React use is in
-the host's *product* UI: hide a button, show a usage meter, render the pricing table. Those must be
+the host's _product_ UI: hide a button, show a usage meter, render the pricing table. Those must be
 tiny and dependency-free; the embedded dashboard bundles TanStack Query, Base UI and a stylesheet.
 
 ## Decision
@@ -21,7 +21,7 @@ tiny and dependency-free; the embedded dashboard bundles TanStack Query, Base UI
   Client-side gates are UX only; enforcement is server-side, and the docs say so.
 - `@xtandard/entitlements/react/embed` — `<EntitlementsDashboard apiBaseUrl />` and
   `<CustomerPortal apiBaseUrl token />`, the SPA internals, same theme modes (`auto | inherit | light |
-  dark`) and scoped stylesheet `@xtandard/entitlements/react/styles.css` as the siblings.
+dark`) and scoped stylesheet `@xtandard/entitlements/react/styles.css` as the siblings.
 
 ## Consequences
 

@@ -21,7 +21,7 @@ edge. Strict limits (seats, prepaid credits) must not be buffered.
 - Across N instances the worst-case overshoot is bounded by `N × (pending per key)`; it is documented
   next to the option and surfaced on decisions as `buffered: true`.
 - The engine can route per feature: `counters: { default: strictStore, buffered: bufferedStore,
-  features: { api_calls: "buffered" } }`, or per catalog feature with `metering: "buffered"`.
+features: { api_calls: "buffered" } }`, or per catalog feature with `metering: "buffered"`.
 - `claim`, `set` and `delete` pass straight through (they are not hot).
 - A failed flush keeps the pending delta and retries; `close()` flushes before shutdown.
 

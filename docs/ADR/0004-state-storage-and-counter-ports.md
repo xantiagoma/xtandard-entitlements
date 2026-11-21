@@ -28,18 +28,22 @@ when available (retrying on conflict) and an in-process per-customer mutex other
 
 ```ts
 interface CounterStore {
-  get(keys: string[]): Promise<number[]>;                       // missing → 0
-  add(key: string, amount: number, opts?: {
-    max?: number;        // never exceed (all-or-nothing unless partial)
-    min?: number;        // never go below (refunds clamp at 0)
-    partial?: boolean;   // apply as much as fits instead of nothing
-    expiresAt?: number;  // retention hint (unix ms); drivers may ignore
-  }): Promise<{ applied: number; value: number }>;
+  get(keys: string[]): Promise<number[]>; // missing → 0
+  add(
+    key: string,
+    amount: number,
+    opts?: {
+      max?: number; // never exceed (all-or-nothing unless partial)
+      min?: number; // never go below (refunds clamp at 0)
+      partial?: boolean; // apply as much as fits instead of nothing
+      expiresAt?: number; // retention hint (unix ms); drivers may ignore
+    },
+  ): Promise<{ applied: number; value: number }>;
   set(key: string, value: number, opts?: { expiresAt?: number }): Promise<void>;
-  claim(key: string, ttlMs: number): Promise<boolean>;          // set-if-absent (idempotency)
-  release(key: string): Promise<void>;                          // drop a claim
+  claim(key: string, ttlMs: number): Promise<boolean>; // set-if-absent (idempotency)
+  release(key: string): Promise<void>; // drop a claim
   delete(keys: string[]): Promise<void>;
-  keys?(prefix: string): Promise<string[]>;                     // admin / graphs
+  keys?(prefix: string): Promise<string[]>; // admin / graphs
 }
 ```
 

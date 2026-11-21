@@ -6,7 +6,7 @@
 
 ## Context
 
-Every product in the landscape needs one list of *features*, *plans* and *limits*. Stigg and
+Every product in the landscape needs one list of _features_, _plans_ and _limits_. Stigg and
 Schematic keep it in their dashboards; PayKit and byo-oss keep it in code (`plan()` / `feature()`,
 `/catalog` importing nothing). A plan catalog is product logic: it changes with releases, needs code
 review, must be type-checked against `check("export_pdf")` call sites, and must render identically on
@@ -26,7 +26,7 @@ builders `feature.boolean | metered | capacity | value | credits`, `plan()` and 
 - `pricingTable(catalog)` returns a JSON-safe, display-ready structure (plans in order, per-feature
   cells, prices, trials) for marketing pages and `<PricingTable>`; the server also serves it at
   `GET {basePath}/api/pricing`.
-- The admin UI shows the catalog **read-only**. Per-customer exceptions are *overrides* and *grants*
+- The admin UI shows the catalog **read-only**. Per-customer exceptions are _overrides_ and _grants_
   (state), not catalog edits.
 - Prices on plans are **display metadata**; the provider stays the source of truth for money (ADR 0015).
 

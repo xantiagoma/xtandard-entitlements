@@ -18,7 +18,7 @@ Neither sibling should become a dependency of this package (nor vice versa).
   (`{ record(input): Promise<unknown> }`), so any compatible recorder works.
 - `@xtandard/entitlements/bridges/webhooks` — `webhooksEvents(webhooks, { application? })` returns
   `{ onThreshold, hooks }` that call `webhooks.publish(application, { eventType, payload,
-  idempotencyKey })` for `entitlements.usage.threshold`, `entitlements.subscription.changed`,
+idempotencyKey })` for `entitlements.usage.threshold`, `entitlements.subscription.changed`,
   `entitlements.trial.started`, … Structural type again (`{ publish(app, input): Promise<unknown> }`).
 - Each bridge is tested against the real sibling package as a dev dependency.
 

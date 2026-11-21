@@ -8,7 +8,7 @@
 
 Lago, Kill Bill and Flexprice are billing systems; they are services because invoicing, tax, dunning
 and payment collection need durable workflows, compliance and a ledger. The gap we fill is the layer
-*in front of* the provider.
+_in front of_ the provider.
 
 ## Decision
 

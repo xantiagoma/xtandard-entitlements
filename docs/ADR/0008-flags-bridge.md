@@ -22,7 +22,7 @@ plan include it?", without wiring two systems in every handler.
    evaluation context so rules can target `entitlement.export_pdf == true` or
    `plan in ["pro", "enterprise"]`.
 2. **`createEntitlementsHook(ent, { customerKey })`** → an OpenFeature `Hook` whose `before` returns
-   the enriched context, so every flag evaluation through *any* provider (including
+   the enriched context, so every flag evaluation through _any_ provider (including
    `@xtandard/flags/openfeature`) sees entitlement attributes automatically.
 3. **`createEntitlementsProvider(ent)`** → an OpenFeature `Provider` where the flag key is a feature
    key and the targeting key is the customer: boolean → `allowed`, number → `remaining` (metered /

@@ -27,7 +27,7 @@ keyed and bounded.
 - Time-dependent state (trial ends, grant/override expiry, period rollover) is evaluated at decision
   time from `now`, not baked into the snapshot, so no cron is needed for correctness.
 - Fallbacks are explicit options, not accidents:
-  - `fallback: "default-plan"` (default) — a customer that cannot be loaded *and* has no cached
+  - `fallback: "default-plan"` (default) — a customer that cannot be loaded _and_ has no cached
     snapshot resolves as "no subscriptions", i.e. the default plan. Decision `reason: "fallback"`.
     Alternatives: `"deny"` and `"allow"`.
   - `counterFallback: "deny"` (default) — when the counter store is unreachable, `consume` is refused

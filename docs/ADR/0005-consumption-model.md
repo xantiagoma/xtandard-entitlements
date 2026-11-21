@@ -9,7 +9,7 @@
 A metered feature's balance comes from several sources: the plan's per-period allowance, add-ons
 (× quantity), recurring grants, one-off grants with expiry and priority (OpenMeter's grant model),
 and optionally a shared credit pool (Autumn/Polar credits). AI workloads only know the real cost after
-the call (Closure, resvary). byo-oss's rule — *a refusal never counts* — is the property users rely on.
+the call (Closure, resvary). byo-oss's rule — _a refusal never counts_ — is the property users rely on.
 
 ## Decision
 

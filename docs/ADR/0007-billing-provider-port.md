@@ -7,7 +7,7 @@
 ## Context
 
 PayKit put Stripe in its schema (`0001_stripe_only_schema.sql`) and had to drop its Polar/Razorpay
-work. The research verdict: keep plan *state* provider-agnostic and sync from any provider.
+work. The research verdict: keep plan _state_ provider-agnostic and sync from any provider.
 
 ## Decision
 
@@ -16,16 +16,16 @@ Subscriptions in state are provider-agnostic (`plan`, `version`, `status`, `peri
 
 ```ts
 interface BillingProvider {
-  readonly id: string;                                   // "stripe" | "polar" | …
-  parseWebhook(request: Request): Promise<BillingWebhook>;   // verify signature, normalize
-  fetchSubscriptions?(providerCustomerId: string): Promise<ProviderSubscription[]>;  // reconcile
-  createCheckout?(input: CheckoutInput): Promise<{ url: string }>;       // link-out
-  createPortalSession?(input: PortalInput): Promise<{ url: string }>;    // link-out
-  reportUsage?(records: UsageRecord[]): Promise<void>;                   // optional usage export
+  readonly id: string; // "stripe" | "polar" | …
+  parseWebhook(request: Request): Promise<BillingWebhook>; // verify signature, normalize
+  fetchSubscriptions?(providerCustomerId: string): Promise<ProviderSubscription[]>; // reconcile
+  createCheckout?(input: CheckoutInput): Promise<{ url: string }>; // link-out
+  createPortalSession?(input: PortalInput): Promise<{ url: string }>; // link-out
+  reportUsage?(records: UsageRecord[]): Promise<void>; // optional usage export
 }
 ```
 
-- **Mapping to plans** comes from the catalog: `plan({ providers: { stripe: { prices: [...] } } })`
+- **Mapping to plans** comes from the catalog: `plan({ providers: { stripe: ["price_…"], polar: ["prod_…"] } })` (provider item ids)
   (Polar products, Paddle prices, Lemon Squeezy variants). Unmapped items are ignored with a warning.
 - **Customer resolution**: our customer id from provider metadata (`metadataKey`, default
   `"customerId"`; Stripe also `client_reference_id`), else the link table
@@ -34,7 +34,7 @@ interface BillingProvider {
   events older than the subscription's `providerUpdatedAt` (out-of-order safety), apply, update cache,
   fire `subscription.changed` hooks. Unknown event types → `200 ignored`.
 - **Status mapping** is per provider into `active | trialing | past_due | paused | canceled |
-  incomplete`; `entitledStatuses` (default `active`, `trialing`, `past_due`) decides access.
+incomplete`; `entitledStatuses` (default `active`, `trialing`, `past_due`) decides access.
 - **Verification is in-house and zero-dependency** (Web Crypto HMAC, constant-time compare,
   timestamp tolerance): Stripe `t=…,v1=…`, Paddle `ts=…;h1=…`, Lemon Squeezy `X-Signature`, Polar
   Standard Webhooks (byte-compatible with `@xtandard/webhooks/receiver`, tested against it). No

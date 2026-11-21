@@ -1,0 +1,252 @@
+{
+  "name": "@xtandard/entitlements",
+  "version": "0.0.0",
+  "description": "Embeddable entitlements, plans and usage-metering engine: a typed catalog in code, memory-first checks, atomic metering, grants and overrides, any billing provider, any storage, any framework — with an admin UI and a customer portal.",
+  "keywords": [
+    "billing",
+    "credits",
+    "entitlements",
+    "feature-gating",
+    "lemonsqueezy",
+    "metering",
+    "openfeature",
+    "paddle",
+    "paywall",
+    "plans",
+    "polar",
+    "pricing",
+    "quotas",
+    "rate-limits",
+    "saas",
+    "self-hosted",
+    "stripe",
+    "subscriptions",
+    "typescript",
+    "usage-based-billing",
+    "xtandard"
+  ],
+  "homepage": "https://github.com/xantiagoma/xtandard-entitlements#readme",
+  "bugs": {
+    "url": "https://github.com/xantiagoma/xtandard-entitlements/issues"
+  },
+  "license": "MIT",
+  "author": "Santiago Montoya <xantiagoma@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xantiagoma/xtandard-entitlements.git"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "LICENSE",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./catalog": {
+      "import": {
+        "types": "./dist/catalog.d.mts",
+        "default": "./dist/catalog.mjs"
+      },
+      "require": {
+        "types": "./dist/catalog.d.cts",
+        "default": "./dist/catalog.cjs"
+      }
+    },
+    "./testing": {
+      "import": {
+        "types": "./dist/testing.d.mts",
+        "default": "./dist/testing.mjs"
+      },
+      "require": {
+        "types": "./dist/testing.d.cts",
+        "default": "./dist/testing.cjs"
+      }
+    },
+    "./storage/memory": {
+      "import": {
+        "types": "./dist/entry-storage-memory.d.mts",
+        "default": "./dist/entry-storage-memory.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-storage-memory.d.cts",
+        "default": "./dist/entry-storage-memory.cjs"
+      }
+    },
+    "./counters/memory": {
+      "import": {
+        "types": "./dist/entry-counters-memory.d.mts",
+        "default": "./dist/entry-counters-memory.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-memory.d.cts",
+        "default": "./dist/entry-counters-memory.cjs"
+      }
+    },
+    "./counters/buffered": {
+      "import": {
+        "types": "./dist/entry-counters-buffered.d.mts",
+        "default": "./dist/entry-counters-buffered.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-buffered.d.cts",
+        "default": "./dist/entry-counters-buffered.cjs"
+      }
+    },
+    "./counters/kv": {
+      "import": {
+        "types": "./dist/entry-counters-kv.d.mts",
+        "default": "./dist/entry-counters-kv.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-counters-kv.d.cts",
+        "default": "./dist/entry-counters-kv.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun run build:lib",
+    "build:lib": "vp pack",
+    "test": "vp test run",
+    "test:coverage": "vp test run --coverage",
+    "test:bun": "bun test ./test/*.bun.test.ts",
+    "lint": "vp lint",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check",
+    "typecheck": "tsc --noEmit",
+    "check": "vp lint && vp fmt --check && bun run typecheck",
+    "prepare": "husky || true",
+    "release": "changelogen --release --push"
+  },
+  "dependencies": {
+    "valibot": "^1.0.0",
+    "wouter": "^3.10.0"
+  },
+  "devDependencies": {
+    "@base-ui-components/react": "1.0.0-rc.0",
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/view": "^6.43.4",
+    "@electric-sql/pglite": "^0.2.0",
+    "@elysia/eden": "2.0.0-rc.0",
+    "@elysiajs/eden": "^1.4",
+    "@lezer/highlight": "^1.2.3",
+    "@openfeature/server-sdk": "^1.16.0",
+    "@playwright/test": "^1.49.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@tanstack/react-query": "^5.62.0",
+    "@types/bun": "^1.1.14",
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.11.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^4.1.6",
+    "@xtandard/flags": "^0.1.11",
+    "@xtandard/webhooks": "^0.1.4",
+    "changelogen": "^0.6.2",
+    "class-variance-authority": "^0.7",
+    "clsx": "^2.1",
+    "drizzle-orm": "^0.45.2",
+    "elysia": "^1.4",
+    "elysia-v2": "npm:elysia@2.0.0-rc.0",
+    "exact-mirror": "^1.2.6",
+    "express": "^5.0.0",
+    "get-port-please": "^3.2.0",
+    "hono": "^4.6.0",
+    "husky": "^9.1.7",
+    "lucide-react": "^1.22",
+    "mongodb": "^6.10.0",
+    "pg": "^8.13.0",
+    "playwright": "^1.49.0",
+    "postcss": "^8.5.16",
+    "postcss-prefix-selector": "^2.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "redis": "^5.0.0",
+    "tailwind-merge": "^3.6",
+    "tailwindcss": "^4.0.0",
+    "type-testing": "^0.2.0",
+    "typebox": "^1.4.3",
+    "typedoc": "^0.28.19",
+    "typescript": "^5.7.0",
+    "unstorage": "^1.13.0",
+    "vite": "^6.0.0",
+    "vite-plus": "^0.1.22"
+  },
+  "peerDependencies": {
+    "@libsql/client": "0.15.15",
+    "@openfeature/server-sdk": "^1.0.0",
+    "drizzle-orm": ">=0.44.0 || >=1.0.0-0",
+    "elysia": "^1.0.0 || ^2.0.0-0",
+    "express": "^4.0.0 || ^5.0.0",
+    "hono": "^4.0.0",
+    "mongodb": "^5.0.0 || ^6.0.0",
+    "pg": "^8.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "redis": "^4.0.0 || ^5.0.0",
+    "unstorage": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@libsql/client": {
+      "optional": true
+    },
+    "@openfeature/server-sdk": {
+      "optional": true
+    },
+    "drizzle-orm": {
+      "optional": true
+    },
+    "elysia": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    },
+    "hono": {
+      "optional": true
+    },
+    "mongodb": {
+      "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "redis": {
+      "optional": true
+    },
+    "unstorage": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
