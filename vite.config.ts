@@ -54,8 +54,10 @@ export default defineConfig({
     ignorePatterns: ["CHANGELOG.md", "site/**/*.mdx", "MISSION.md"],
   },
   staged: {
-    // Pre-commit only formats (fast). Lint + typecheck run in pre-push and CI.
-    "*.{ts,tsx,md,mdx,json,jsonc,yml,yaml,css,html}": ["vp fmt"],
+    // Pre-commit only formats (fast). Lint + typecheck run in pre-push and CI. .mdx and
+    // CHANGELOG.md are fmt-ignored: --no-error-on-unmatched-pattern keeps a commit that
+    // touches only those from failing with "no target files".
+    "*.{ts,tsx,md,json,jsonc,yml,yaml,css,html}": ["vp fmt --no-error-on-unmatched-pattern"],
   },
   pack: [
     {
