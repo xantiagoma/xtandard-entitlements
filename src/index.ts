@@ -177,6 +177,22 @@ export type { CounterAddOptions, CounterAddResult, CounterStore } from "./counte
 export { isBufferedCounterStore } from "./counters/buffered.ts";
 export type { BufferedCounterStore } from "./counters/buffered.ts";
 
+// Billing port (providers + intake live at /billing and /billing/*)
+export { BillingVerificationError } from "./billing/contract.ts";
+export type {
+  BillingEvent,
+  BillingProvider,
+  BillingWebhook,
+  CheckoutInput,
+  EntitlementsBilling,
+  IntakeOutcome,
+  PortalSessionInput,
+  ProviderItem,
+  ProviderSubscription,
+  ReconcileResult,
+  UsageRecord,
+} from "./billing/contract.ts";
+
 // Ledger internals (custom drivers / advanced use)
 export { buildLegs, legState, takeLegs } from "./ledger.ts";
 export type { Bucket, Leg, LegState, Take } from "./ledger.ts";
