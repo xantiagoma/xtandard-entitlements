@@ -20,7 +20,7 @@ cannot take SVG, and nobody sees them as an icon on a page.
 | File                                                   | What it is                                                               | Use it for                                                                                                               |
 | ------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | `logo.svg`                                             | App icon: the mark on a near-black rounded square with faint orbit lines | Only where an app-icon shape is expected (avatars, registries) — never displayed on our pages                            |
-| `symbol-dark.svg`, `symbol-light.svg`                  | The mark with brackets, transparent (no tile), tuned per surface         | Every standalone mark on a page: the docs-site hero (theme-aware), the admin UI / portal / embeds header                 |
+| `symbol-dark.svg`, `symbol-light.svg`                  | The mark with brackets, transparent (no tile), tuned per surface         | The admin UI / portal / embeds header (per theme); any standalone mark on a page                                         |
 | `symbol.svg`                                           | The same mark with neutral greys, readable on both                       | Where one file must serve both themes                                                                                    |
 | `lockup-horizontal-dark.svg`                           | Mark + wordmark, `xtandard-` in near-white                               | Headers on dark backgrounds (README in GitHub dark mode, the docs site in dark mode)                                     |
 | `lockup-horizontal-light.svg`                          | Mark + wordmark, `xtandard-` in ink, deeper lime                         | Headers on light backgrounds (README in light mode and on npm, the docs site in light mode)                              |
@@ -49,8 +49,8 @@ sh scripts/brand-assets.sh                                      # social.png, ap
 - **README header**: a `<picture>` choosing `lockup-horizontal-dark.svg` / `lockup-horizontal-light.svg`
   with `prefers-color-scheme`, by absolute `raw.githubusercontent.com` URL (the README ships to npm,
   which does not ship `docs/`).
-- **Docs site**: the horizontal lockups as the Starlight logo (light/dark), `symbol-dark.svg` /
-  `symbol-light.svg` as the theme-aware hero,
+- **Docs site**: the horizontal lockups as the Starlight logo (light/dark), `lockup-stacked-dark.svg` /
+  `lockup-stacked-light.svg` as the theme-aware hero (as `@xtandard/audit` does),
   `favicon.svg` first then `favicon.ico` + `apple-touch-icon.png` in `<head>`, and `social.png` as
   `og:image`.
 - **Admin UI, portal and embeds**: the symbol inlined in the header next to the title, recoloured per
