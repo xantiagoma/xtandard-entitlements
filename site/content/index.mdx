@@ -1,0 +1,139 @@
+---
+title: "@xtandard/entitlements"
+description: "@xtandard/entitlements is an embeddable entitlements, plans and usage-metering engine for TypeScript: a typed catalog in code, memory-first checks, atomic metering, grants and overrides, any billing provider, any storage, any framework — with an admin UI and a customer portal."
+template: splash
+pagefind: false
+hero:
+  title: "Plans, entitlements & usage metering — as a library"
+  tagline: Declare your pricing model in code, gate features and meter usage in-process with atomic counters, sync plan state from any billing provider, and give your team an admin UI and your customers a usage portal. Your database, your process.
+  image:
+    file: ../../../../docs/assets/logo-256.png
+    alt: The xtandard entitlements logo
+  actions:
+    - text: Quickstart
+      link: "@BASE@/guides/quickstart/"
+      icon: right-arrow
+    - text: API reference
+      link: "@BASE@/api/"
+      variant: minimal
+    - text: View on GitHub
+      link: "@REPO@"
+      icon: external
+      variant: minimal
+---
+
+{/* The home page: written for the site; its content follows the root README.
+scripts/sync.ts replaces the BASE, REPO and NPM tokens. */}
+
+import { Card, CardGrid, LinkCard, Tabs, TabItem } from "@astrojs/starlight/components";
+
+```sh
+bun add @xtandard/entitlements
+```
+
+The Stigg / Schematic / Autumn niche, as an MIT library: billing-provider-agnostic,
+storage-pluggable and framework-agnostic. `check()` is a memory read, `consume()` is one atomic step
+and **a refused request never counts**. Invoicing, tax, dunning and payments stay with your provider.
+
+## A quick taste
+
+<Tabs syncKey="home-taste">
+<TabItem label="Catalog">
+
+```ts
+import { defineCatalog, feature } from "@xtandard/entitlements/catalog";
+
+export const catalog = defineCatalog({
+  features: {
+    seats: feature.capacity({ name: "Seats", unit: "seat" }),
+    api_calls: feature.metered({ name: "API calls", unit: "call", reset: "month" }),
+    export_pdf: feature.boolean({ name: "PDF export" }),
+  },
+  plans: {
+    free: { default: true, features: { seats: 3, api_calls: 1_000 } },
+    pro: {
+      trial: { days: 14 },
+      providers: { stripe: ["price_pro_monthly"] },
+      features: { seats: 10, api_calls: { limit: 100_000, overage: "allow" }, export_pdf: true },
+    },
+  },
+});
+```
+
+Zero dependencies, fully typed — the same file drives your API, your React gates and your pricing
+page. [Catalog guide →](@BASE@/concepts/catalog/)
+
+</TabItem>
+<TabItem label="Check & consume">
+
+```ts
+import { createEntitlements } from "@xtandard/entitlements";
+
+const ent = createEntitlements({ catalog, storage, counters });
+
+const r = await ent.consume(org.id, "api_calls", 1, { idempotencyKey: req.id });
+// { allowed: false, reason: "limit_reached", denial: "payment_required",
+//   unlockedBy: ["pro"], used: 1000, remaining: 0, resetsAt: "2026-12-01T00:00:00.000Z" }
+
+const tokens = await ent.reserve(org.id, "gpt_tokens", 8_000);
+await ent.settle(tokens.reservation!.id, actualTokens);
+```
+
+Buckets (allowance → grants → overage), idempotency keys, reserve / settle, thresholds, credits.
+[Metering guide →](@BASE@/concepts/metering/)
+
+</TabItem>
+<TabItem label="Operate">
+
+```ts
+await ent.grant(org.id, { feature: "api_calls", amount: 1_000, expiresAt: "2026-12-31", reason: "outage credit" });
+await ent.override(org.id, { feature: "export_pdf", enabled: true, reason: "pilot" });
+await ent.startTrial(org.id, "pro");
+await ent.migratePlan("*", "pro", 2); // grandfathered customers move only when you say so
+```
+
+Every change runs through `before` / `after` hooks and lands in the activity log (or
+`@xtandard/audit`). [Hooks →](@BASE@/concepts/hooks/)
+
+</TabItem>
+</Tabs>
+
+## What you get
+
+<CardGrid>
+  <Card title="A typed catalog" icon="document">
+    Boolean, metered, credits, capacity and value features; plan groups, defaults, trials, add-ons and
+    versioned plans for grandfathering.
+  </Card>
+  <Card title="Atomic metering" icon="setting">
+    A counter port where every consume is one atomic step; Redis, Postgres, SQLite, MongoDB, Drizzle or
+    memory; optional write-behind counters for hot soft limits.
+  </Card>
+  <Card title="Any billing provider" icon="random">
+    Stripe, Polar, Paddle, Lemon Squeezy, better-auth's Stripe plugin and manual plans — verified,
+    idempotent, order-safe webhook intake, no SDKs.
+  </Card>
+  <Card title="Admin UI and customer portal" icon="laptop">
+    Look up customers, comp features, raise limits, see usage — and give customers their plan, usage
+    and upgrade link-outs behind short-lived portal tokens.
+  </Card>
+  <Card title="React" icon="seti:react">
+    `useEntitlement`, `<Gate>`, `<UsageMeter>`, `<PricingTable>`, `<UpgradePrompt>`, plus the full
+    dashboard and portal as embeddable components.
+  </Card>
+  <Card title="One gate with flags" icon="star">
+    An OpenFeature provider and hook so `@xtandard/flags` rules can target `plan` and
+    `entitlement.*` — rollouts and plan gates share one decision.
+  </Card>
+</CardGrid>
+
+## Read next
+
+<CardGrid>
+  <LinkCard title="Quickstart" href="@BASE@/guides/quickstart/" />
+  <LinkCard title="Catalog" href="@BASE@/concepts/catalog/" />
+  <LinkCard title="Metering" href="@BASE@/concepts/metering/" />
+  <LinkCard title="Architecture" href="@BASE@/concepts/architecture/" />
+  <LinkCard title="HTTP API" href="@BASE@/reference/http-api/" />
+  <LinkCard title="API reference" href="@BASE@/api/" />
+</CardGrid>
