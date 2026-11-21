@@ -18,7 +18,10 @@ usage portal. Your database, your process — no per-seat SaaS, no separate serv
 
 **Documentation: [me.xantiagoma.com/xtandard-entitlements](https://me.xantiagoma.com/xtandard-entitlements/)** — guides and the full API reference.
 
-<img src="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-customer.png" alt="Customer detail: plan, entitlements with usage bars, grants and overrides" width="800" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-customer-dark.png" />
+  <img src="https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-customer-light.png" alt="Admin UI, customer detail: plan, entitlements with usage bars, grants, overrides and daily usage" width="800" />
+</picture>
 
 </div>
 
@@ -37,6 +40,7 @@ usage portal. Your database, your process — no per-seat SaaS, no separate serv
 - [Feature flags (OpenFeature)](#feature-flags-openfeature)
 - [Storage](#storage)
 - [Subpath exports](#subpath-exports)
+- [Screenshots](#screenshots)
 - [Examples](#examples)
 - [Documentation](#documentation)
 - [Project status](#project-status)
@@ -253,6 +257,14 @@ counters in Redis, or both in one database. → [Storage guide](./docs/STORAGE.m
 | `@xtandard/entitlements/auth/*` · `/authorization/*` · `/hooks/log` | panel auth, authorization, logging hook                            |
 | `@xtandard/entitlements/react` · `/react/embed`                     | hooks + gates; embedded dashboard + portal                         |
 | `@xtandard/entitlements/testing`                                    | in-memory engine with a test clock                                 |
+
+## Screenshots
+
+|                                                                                                                                                                                    |                                                                                                                                                                  |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ![Overview: customers by plan, subscription health, trials ending soon](https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-overview-light.png) | ![Catalog: features × plans, versions and add-ons](https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-catalog-dark.png)      |
+| ![Customer portal: plan, usage vs limits, plan comparison](https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-portal-light.png)                | ![Customers: searchable list with plans and statuses](https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-customers-dark.png) |
+| ![React embed inside a host app](https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-embed-light.png)                                           | ![Customer portal in dark mode](https://raw.githubusercontent.com/xantiagoma/xtandard-entitlements/main/docs/assets/ui-portal-dark.png)                          |
 
 ## Examples
 

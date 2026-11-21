@@ -67,6 +67,7 @@ export default defineConfig({
         "src/entry-counters-memory.ts",
         "src/entry-counters-buffered.ts",
         "src/entry-counters-kv.ts",
+        "src/entry-react.ts",
         "src/entry-billing.ts",
         "src/entry-billing-stripe.ts",
         "src/entry-billing-polar.ts",

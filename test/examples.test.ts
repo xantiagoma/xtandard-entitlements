@@ -19,7 +19,8 @@ const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
 
 /** Every import specifier the package exports (CSS and package.json aside). */
 const specifiers = Object.keys(pkg.exports)
-  .filter((key) => key !== "./package.json" && !key.endsWith(".css"))
+  // Code entry points only: not the manifest, stylesheets or asset wildcards (`./ui/*`).
+  .filter((key) => key !== "./package.json" && !key.endsWith(".css") && !key.includes("*"))
   .map((key) => `@xtandard/entitlements${key.slice(1)}`);
 
 function pathsOf(tsconfig: string): Record<string, string[]> {

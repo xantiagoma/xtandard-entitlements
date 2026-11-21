@@ -56,7 +56,7 @@ verification (`verifyPortalToken`) is stateless, signature-first and constant-ti
 
 ## 3. Embed
 
-React (see the UI docs for props):
+React (see [UI](./UI.md) for props):
 
 ```tsx
 import { CustomerPortal } from "@xtandard/entitlements/react/embed";
@@ -67,6 +67,38 @@ import { CustomerPortal } from "@xtandard/entitlements/react/embed";
 Or open the panel itself with the token: the SPA sends it as `Authorization: Bearer` on every API
 call, `/config` answers `mode: "portal"` (with the `customer` and `scope`), and the UI renders the
 reduced customer chrome.
+
+## Portal UI
+
+What the customer sees — the SPA in portal mode, or `<CustomerPortal>` — is one page:
+
+![The customer portal](./assets/ui-portal-light.png)
+
+| Part         | Shows                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header       | your `title` / `logoUrl`, the customer id, a "Customer portal" badge, the theme switcher. No navigation.                                                                                                                                                                                                                                                                                              |
+| Banners      | a trial ending ("Your Pro trial ends in 2 days"), a failed payment (`past_due`, with **Update payment** when `canManage`), a scheduled cancellation ("ends on Dec 1").                                                                                                                                                                                                                                |
+| Current plan | plan name, status badge, display price, renewal / trial end, applied add-ons; **Manage billing** (`POST /api/portal/manage` → redirect) when `canManage`.                                                                                                                                                                                                                                             |
+| Usage        | a meter per included metered / credits / capacity feature: `used / limit`, what is left, overage, "resets in" — coloured at 75 % and 90 %.                                                                                                                                                                                                                                                            |
+| Features     | the boolean and value features and whether / how they are included.                                                                                                                                                                                                                                                                                                                                   |
+| Plans        | the public pricing table, current plan marked. **Upgrade / Downgrade** posts `/api/portal/checkout` with `successUrl` / `cancelUrl` = the current page and redirects to the returned `url`. Disabled, with a hint, when `canCheckout` is false (no provider, or a `portal:read`-only token). Choosing the free default plan opens **Manage billing** instead (leaving a paid plan is a cancellation). |
+
+Getting the customer there without React: link to the panel with the token in the **URL fragment**,
+which never reaches servers or access logs —
+
+```ts
+const token = await createPortalToken(process.env.PORTAL_SECRET!, org.id, { expiresIn: "1h" });
+return Response.redirect(`${origin}/billing/#token=${token}`, 302); // `?token=` also works
+```
+
+The SPA keeps the token in memory, removes it from the address bar, and renders the portal even
+when the token is rejected (expired / tampered → the `401` message, never the admin chrome).
+Admins open the same page for any customer from **Open portal preview** on the customer page
+(`/portal?customer=<id>`), with a banner saying it is a preview.
+
+For your own UI instead of the full page, `@xtandard/entitlements/react` reads the same
+`/api/portal/me` with the same token: `<UsageMeter>`, `<Gate>`, `<PricingTable>`,
+`<UpgradePrompt>` ([UI](./UI.md)).
 
 ## The portal API
 

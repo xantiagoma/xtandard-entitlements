@@ -31,6 +31,8 @@
       "@xtandard/entitlements/express": ["../src/entry-express.ts"],
       "@xtandard/entitlements/hono": ["../src/entry-hono.ts"],
       "@xtandard/entitlements/next": ["../src/entry-next.ts"],
+      "@xtandard/entitlements/react": ["../src/entry-react.ts"],
+      "@xtandard/entitlements/react/embed": ["../src/entry-react-embed.ts"],
       "@xtandard/entitlements/storage/file": ["../src/entry-storage-file.ts"],
       "@xtandard/entitlements/storage/redis": ["../src/entry-storage-redis.ts"],
       "@xtandard/entitlements/storage/postgres": ["../src/entry-storage-postgres.ts"],
