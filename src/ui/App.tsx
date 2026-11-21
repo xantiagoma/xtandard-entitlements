@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Lock } from "lucide-react";
 import type { PanelConfig } from "./types.ts";
 import { getApiToken, getConfig } from "./api.ts";
-import { ThemeToggle } from "./components/ThemeToggle.tsx";
 import { BrandMark } from "./components/ent-bits.tsx";
 import { OverviewView } from "./views/OverviewView.tsx";
 import { CatalogView } from "./views/CatalogView.tsx";
@@ -13,8 +12,7 @@ import { CustomersView } from "./views/CustomersView.tsx";
 import { CustomerDetailView } from "./views/CustomerDetailView.tsx";
 import { ActivityView } from "./views/ActivityView.tsx";
 import { PortalView } from "./views/PortalView.tsx";
-import { cn } from "./lib/utils.ts";
-import { canLeave } from "./lib/nav-guard.ts";
+import { canLeave, cn, ThemeToggle } from "@xtandard/kit/ui";
 
 interface NavTab {
   path: string;
@@ -48,12 +46,15 @@ function getBootstrap(): Partial<PanelConfig> {
  */
 export function App({
   locationHook,
+  searchHook,
   base = "",
   logoUrl,
   showThemeToggle = true,
   forcePortal = false,
 }: {
   locationHook?: BaseLocationHook;
+  /** The query-string source (the embed's memory router keeps `?customer=` etc.). */
+  searchHook?: () => string;
   base?: string;
   /** Override the navbar logo image (otherwise taken from server `/config`). */
   logoUrl?: string;
@@ -63,7 +64,11 @@ export function App({
   forcePortal?: boolean;
 }): React.ReactElement {
   return (
-    <Router hook={locationHook ?? useHashLocation} base={base}>
+    <Router
+      hook={locationHook ?? useHashLocation}
+      {...(searchHook ? { searchHook } : {})}
+      base={base}
+    >
       <AppShell logoUrl={logoUrl} showThemeToggle={showThemeToggle} forcePortal={forcePortal} />
     </Router>
   );

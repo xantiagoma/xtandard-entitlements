@@ -26,48 +26,29 @@ import type {
   SubscribeInput,
   Subscription,
 } from "./types.ts";
-import { EntitlementsApiError, type ApiErrorBody } from "./types.ts";
+import { createApiClient } from "@xtandard/kit/ui";
+import { EntitlementsApiError } from "./types.ts";
 
-// Base prepended to every request path. Empty by default so the bundled SPA uses
-// relative URLs (resolved against the injected <base href>). The React embed
-// sets this to the panel's mount URL via setApiBase().
-let apiBase = "";
-// `same-origin` (default) suits the bundled SPA and same-origin embeds; a
-// cross-origin embed with cookie auth must use `include`.
-let apiCredentials: RequestCredentials = "same-origin";
-let apiFetch: FetchLike = (input, init) => fetch(input, init);
-// Portal token sent as `Authorization: Bearer entpt_…` on every request.
-let apiToken: string | null = null;
-// Admin preview of a customer's portal: `?customer=` on the portal routes.
-let previewCustomer: string | null = null;
+/**
+ * The client (`@xtandard/kit/ui` `createApiClient`): relative paths by default,
+ * `same-origin` credentials, the portal token as a Bearer credential, and
+ * non-2xx responses thrown as {@link EntitlementsApiError}.
+ */
+const client = createApiClient({ errorClass: EntitlementsApiError });
 
-/** The subset of `fetch` the client uses (the global `fetch` satisfies it). */
-export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
-/** Options for {@link setApiBase}. */
-export interface ApiClientOptions {
-  /** `credentials` mode for requests. Use `"include"` for cross-origin cookie auth. */
-  credentials?: RequestCredentials;
-  /** Custom fetch implementation (bearer tokens, extra headers, instrumentation). */
-  fetch?: FetchLike;
-}
+export type { ApiClientOptions, FetchLike } from "@xtandard/kit/ui";
 
 /** Point the API client at a base URL (used by `@xtandard/entitlements/react/embed`). */
-export function setApiBase(base: string, opts?: ApiClientOptions): void {
-  apiBase = base.replace(/\/$/, "");
-  if (opts?.credentials) apiCredentials = opts.credentials;
-  if (opts?.fetch) apiFetch = opts.fetch;
-}
+export const setApiBase = client.setApiBase;
 
 /** Attach a portal token (`entpt_…`) as a Bearer credential on every request. */
-export function setApiToken(token: string | null): void {
-  apiToken = token;
-}
+export const setApiToken = client.setApiToken;
 
 /** The portal token currently attached, if any. */
-export function getApiToken(): string | null {
-  return apiToken;
-}
+export const getApiToken = client.getApiToken;
+
+// Admin preview of a customer's portal: `?customer=` on the portal routes.
+let previewCustomer: string | null = null;
 
 /**
  * Admin preview: send `?customer=<id>` on the portal routes so an admin
@@ -77,45 +58,14 @@ export function setPreviewCustomer(customer: string | null): void {
   previewCustomer = customer;
 }
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await apiFetch(apiBase ? `${apiBase}/${path}` : path, {
-    credentials: apiCredentials,
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(apiToken ? { Authorization: `Bearer ${apiToken}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
-
-  if (!res.ok) {
-    let body: ApiErrorBody;
-    try {
-      body = (await res.json()) as ApiErrorBody;
-    } catch {
-      body = { error: res.statusText || `HTTP ${res.status}` };
-    }
-    throw new EntitlementsApiError(res.status, body);
-  }
-
-  const text = await res.text();
-  if (!text) return undefined as unknown as T;
-  return JSON.parse(text) as T;
-}
+const req = <T>(path: string, init?: RequestInit): Promise<T> => client.req<T>(path, init);
 
 const send = (method: string, body?: unknown): RequestInit => ({
   method,
   ...(body === undefined ? {} : { body: JSON.stringify(body) }),
 });
 
-const query = (params: { [key: string]: string | number | undefined | null }): string => {
-  const search = new URLSearchParams();
-  for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== "") search.set(key, String(value));
-  }
-  const s = search.toString();
-  return s ? `?${s}` : "";
-};
+const query = client.query;
 
 const enc = encodeURIComponent;
 const customerBase = (id: string): string => `api/customers/${enc(id)}`;

@@ -2,8 +2,7 @@ import * as React from "react";
 import { Check, Minus } from "lucide-react";
 import type { PricingPlan, PricingTable } from "../types.ts";
 import { formatPrice, planDirection } from "../lib/format.ts";
-import { cn } from "../lib/utils.ts";
-import { Button } from "./ui-bits.tsx";
+import { Button, cn } from "@xtandard/kit/ui";
 
 /**
  * The plan comparison: one card per plan (current versions), features in

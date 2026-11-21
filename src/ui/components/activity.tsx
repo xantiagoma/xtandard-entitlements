@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type { ActivityEntry } from "../types.ts";
 import { formatDateTime, relativeTime } from "../lib/format.ts";
-import { cn } from "../lib/utils.ts";
+import { cn } from "@xtandard/kit/ui";
 
 /** Icon + tone for an activity type (`grant.created`, `subscription.canceled`, …). */
 function iconFor(type: string): { Icon: React.FC<{ className?: string }>; tone: string } {

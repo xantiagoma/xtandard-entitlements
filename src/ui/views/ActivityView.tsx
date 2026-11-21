@@ -3,9 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { listActivity } from "../api.ts";
 import { keys } from "../lib/queries.ts";
-import { EmptyCard, LoadingRow, PageHeader } from "../components/bits.tsx";
 import { ActivityTimeline } from "../components/activity.tsx";
-import { Segmented, TextInput } from "../components/primitives.tsx";
+import { EmptyCard, LoadingRow, PageHeader, Segmented, TextInput } from "@xtandard/kit/ui";
 
 type Filter = "all" | "subscription" | "grant" | "override" | "usage" | "customer";
 

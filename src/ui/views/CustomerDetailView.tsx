@@ -37,12 +37,8 @@ import {
 } from "../lib/format.ts";
 import { useCustomerAction } from "../lib/mutations.ts";
 import { keys, useCatalog, type CatalogIndex } from "../lib/queries.ts";
-import { cn } from "../lib/utils.ts";
-import { ConfirmDialog, EmptyCard, LoadingRow, Mono, SectionCard } from "../components/bits.tsx";
 import { Chip, SourceChip, StatusBadge, UsageBar, UsageChart } from "../components/ent-bits.tsx";
 import { ActivityTimeline } from "../components/activity.tsx";
-import { Segmented } from "../components/primitives.tsx";
-import { Avatar, Button } from "../components/ui-bits.tsx";
 import {
   ChangePlanDialog,
   EditProfileDialog,
@@ -59,6 +55,17 @@ import type {
   Override,
   Subscription,
 } from "../types.ts";
+import {
+  Avatar,
+  Button,
+  cn,
+  ConfirmDialog,
+  EmptyCard,
+  LoadingRow,
+  Mono,
+  SectionCard,
+  Segmented,
+} from "@xtandard/kit/ui";
 
 /** A pending confirmation (one dialog serves every destructive action). */
 type Confirm =
@@ -271,7 +278,7 @@ function CustomerBody({
 
       {/* ── Subscriptions ──────────────────────────────────────────────────── */}
       <SectionCard
-        className="mt-6"
+        className="shadow-sm mt-6"
         title="Plans & subscriptions"
         description={
           basePlan
@@ -391,7 +398,7 @@ function CustomerBody({
 
       {/* ── Entitlements ───────────────────────────────────────────────────── */}
       <SectionCard
-        className="mt-4"
+        className="shadow-sm mt-4"
         title="Entitlements"
         description="What the engine decides right now, with this period's usage."
         flush
@@ -446,7 +453,7 @@ function CustomerBody({
               <Button
                 size="sm"
                 variant="secondary"
-                icon={<Gift className="size-3.5" />}
+                icon={<Gift className="shadow-sm size-3.5" />}
                 onClick={() => setDialog({ kind: "grant" })}
               >
                 Add grant
@@ -516,7 +523,7 @@ function CustomerBody({
               <Button
                 size="sm"
                 variant="secondary"
-                icon={<ShieldAlert className="size-3.5" />}
+                icon={<ShieldAlert className="shadow-sm size-3.5" />}
                 onClick={() => setDialog({ kind: "override" })}
               >
                 Add override
@@ -892,7 +899,7 @@ function UsageCard({
     <SectionCard
       title="Daily usage"
       description="Last 30 days, per metered feature."
-      className={className}
+      className={cn("shadow-sm", className)}
       actions={
         metered.length > 1 ? (
           <Segmented
@@ -930,7 +937,7 @@ function CustomerActivity({ id, className }: { id: string; className?: string })
     staleTime: 5_000,
   });
   return (
-    <SectionCard title="Activity" className={className}>
+    <SectionCard title="Activity" className={cn("shadow-sm", className)}>
       {activity.isLoading ? (
         <LoadingRow label="Loading activity…" />
       ) : (activity.data ?? []).length === 0 ? (
