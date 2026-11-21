@@ -35,6 +35,9 @@
     "type": "git",
     "url": "git+https://github.com/xantiagoma/xtandard-entitlements.git"
   },
+  "bin": {
+    "xtandard-entitlements": "./bin/xtandard-entitlements.mjs"
+  },
   "files": [
     "dist",
     "bin",
@@ -115,6 +118,136 @@
       "require": {
         "types": "./dist/entry-counters-kv.d.cts",
         "default": "./dist/entry-counters-kv.cjs"
+      }
+    },
+    "./auth/none": {
+      "import": {
+        "types": "./dist/entry-auth-none.d.mts",
+        "default": "./dist/entry-auth-none.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-auth-none.d.cts",
+        "default": "./dist/entry-auth-none.cjs"
+      }
+    },
+    "./auth/basic": {
+      "import": {
+        "types": "./dist/entry-auth-basic.d.mts",
+        "default": "./dist/entry-auth-basic.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-auth-basic.d.cts",
+        "default": "./dist/entry-auth-basic.cjs"
+      }
+    },
+    "./auth/delegated": {
+      "import": {
+        "types": "./dist/entry-auth-delegated.d.mts",
+        "default": "./dist/entry-auth-delegated.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-auth-delegated.d.cts",
+        "default": "./dist/entry-auth-delegated.cjs"
+      }
+    },
+    "./authorization/none": {
+      "import": {
+        "types": "./dist/entry-authorization-none.d.mts",
+        "default": "./dist/entry-authorization-none.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-authorization-none.d.cts",
+        "default": "./dist/entry-authorization-none.cjs"
+      }
+    },
+    "./authorization/roles": {
+      "import": {
+        "types": "./dist/entry-authorization-roles.d.mts",
+        "default": "./dist/entry-authorization-roles.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-authorization-roles.d.cts",
+        "default": "./dist/entry-authorization-roles.cjs"
+      }
+    },
+    "./authorization/delegated": {
+      "import": {
+        "types": "./dist/entry-authorization-delegated.d.mts",
+        "default": "./dist/entry-authorization-delegated.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-authorization-delegated.d.cts",
+        "default": "./dist/entry-authorization-delegated.cjs"
+      }
+    },
+    "./hooks/log": {
+      "import": {
+        "types": "./dist/entry-hooks-log.d.mts",
+        "default": "./dist/entry-hooks-log.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-hooks-log.d.cts",
+        "default": "./dist/entry-hooks-log.cjs"
+      }
+    },
+    "./bun": {
+      "import": {
+        "types": "./dist/entry-bun.d.mts",
+        "default": "./dist/entry-bun.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-bun.d.cts",
+        "default": "./dist/entry-bun.cjs"
+      }
+    },
+    "./elysia": {
+      "import": {
+        "types": "./dist/entry-elysia.d.mts",
+        "default": "./dist/entry-elysia.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-elysia.d.cts",
+        "default": "./dist/entry-elysia.cjs"
+      }
+    },
+    "./elysia2": {
+      "import": {
+        "types": "./dist/types-elysia2/entry-elysia2.d.ts",
+        "default": "./dist/entry-elysia2.mjs"
+      },
+      "require": {
+        "types": "./dist/types-elysia2/entry-elysia2.d.ts",
+        "default": "./dist/entry-elysia2.cjs"
+      }
+    },
+    "./express": {
+      "import": {
+        "types": "./dist/entry-express.d.mts",
+        "default": "./dist/entry-express.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-express.d.cts",
+        "default": "./dist/entry-express.cjs"
+      }
+    },
+    "./hono": {
+      "import": {
+        "types": "./dist/entry-hono.d.mts",
+        "default": "./dist/entry-hono.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-hono.d.cts",
+        "default": "./dist/entry-hono.cjs"
+      }
+    },
+    "./next": {
+      "import": {
+        "types": "./dist/entry-next.d.mts",
+        "default": "./dist/entry-next.mjs"
+      },
+      "require": {
+        "types": "./dist/entry-next.d.cts",
+        "default": "./dist/entry-next.cjs"
       }
     },
     "./billing": {
@@ -223,18 +356,22 @@
     "access": "public"
   },
   "scripts": {
-    "build": "bun run build:lib",
+    "build": "bun run build:lib && bun run build:elysia2-types",
     "build:lib": "vp pack",
+    "build:elysia2-types": "tsc -p tsconfig.elysia2.build.json && bun scripts/fix-elysia2-types.ts",
     "test": "vp test run",
     "test:coverage": "vp test run --coverage",
     "test:bun": "bun test ./test/*.bun.test.ts",
     "lint": "vp lint",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.elysia2.json",
     "check": "vp lint && vp fmt --check && bun run typecheck",
     "prepare": "husky || true",
-    "release": "changelogen --release --push"
+    "release": "changelogen --release --push",
+    "docs:dev": "cd site && bun install && bun run dev",
+    "docs:build": "cd site && bun install && bun run build",
+    "docs:preview": "cd site && bun run preview"
   },
   "dependencies": {
     "valibot": "^1.0.0",
