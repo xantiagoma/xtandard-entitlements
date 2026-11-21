@@ -75,6 +75,28 @@ export function runStorageContractTests(
       expect(await storage.getKeys("ent/reservations/")).toEqual(["ent/reservations/r1"]);
       expect(await storage.getKeys("ent/nothing/")).toEqual([]);
     });
+
+    test("keys are case-sensitive (no collation folding)", async () => {
+      const storage = await makeStorage();
+      await storage.setItem(customerKey("Acme"), { v: "upper" });
+      await storage.setItem(customerKey("acme"), { v: "lower" });
+      expect(await storage.getItem(customerKey("Acme"))).toEqual({ v: "upper" });
+      expect(await storage.getItem(customerKey("acme"))).toEqual({ v: "lower" });
+      expect(await storage.getKeys("ent/customers/A")).toEqual([customerKey("Acme")]);
+      expect((await storage.getKeys("ent/customers/")).sort()).toEqual(
+        [customerKey("Acme"), customerKey("acme")].sort(),
+      );
+    });
+
+    test("LIKE metacharacters in prefixes match literally (% _ ! \\)", async () => {
+      const storage = await makeStorage();
+      const keys = ["ent/p%/a", "ent/pX/b", "ent/p_/c", "ent/pY/d", "ent/p!/e", "ent/p\\/f"];
+      for (const k of keys) await storage.setItem(k, 1);
+      expect(await storage.getKeys("ent/p%/")).toEqual(["ent/p%/a"]);
+      expect(await storage.getKeys("ent/p_/")).toEqual(["ent/p_/c"]);
+      expect(await storage.getKeys("ent/p!/")).toEqual(["ent/p!/e"]);
+      expect(await storage.getKeys("ent/p\\/")).toEqual(["ent/p\\/f"]);
+    });
   });
 
   if (options.compareAndSwap) {
