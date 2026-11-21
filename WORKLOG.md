@@ -4,6 +4,17 @@ Reverse-chronological. Each entry: timestamp · task · files · tests · blocke
 
 ---
 
+## 2026-11-21 — release-ready
+
+- PR #19 examples/react-app (hooks, gates, pricing table, embedded portal; SSR + build demo) and the
+  GETTING_STARTED React section. PR #20 `chore(release): v0.1.0` (version + CHANGELOG; no tag pushed).
+- Final gate on main: check, 777 vitest, 62 bun, 23 Playwright e2e, build, publint, pack (520 files,
+  1.1 MB), consumer smoke of the tarball (ESM, CJS, bundled UI, Hono adapter, CLI). CI + Pages green.
+- READY TO PUBLISH sent to t1r: first publish by hand, then trusted publishing (docs/RELEASES.md).
+- Remote branches cleaned; all workers stopped.
+
+---
+
 ## 2026-11-21 — billing, examples, UI merged; brand rules
 
 - PR #5 billing + flags bridge + audit/webhooks bridges; PR #9 examples (10 runnable, demos) + GETTING_STARTED
