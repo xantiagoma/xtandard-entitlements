@@ -272,10 +272,7 @@ export const sidebar: Item[] = prune(allSidebar);
  * ignored as soon as its file exists, so this list can only shrink.
  */
 export const pending: Record<string, string> = {
-  "docs/BILLING.md": "project/adr/0007",
   "docs/STORAGE.md": "project/adr/0004",
-  "docs/ECOSYSTEM.md": "project/adr/0013",
-  "docs/OPENFEATURE.md": "project/adr/0008",
   "docs/UI.md": "project/adr/0010",
   "docs/GETTING_STARTED.md": "guides/quickstart",
   "examples/README.md": "guides/examples",
