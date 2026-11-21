@@ -523,6 +523,18 @@ describe("control plane", () => {
     expect(ent.pricing().plans).toHaveLength(3);
   });
 
+  it("resolve() returns the snapshot set without counter reads", async () => {
+    const counters = createMemoryCounterStore();
+    let reads = 0;
+    const spy: CounterStore = { ...counters, get: async (k) => (reads++, counters.get(k)) };
+    const { ent } = setup({ counters: spy });
+    await ent.subscribe("org", { plan: "pro" });
+    const set = await ent.resolve("org");
+    expect(set.plans[0]!.plan).toBe("pro");
+    expect(set.features.export_pdf!.enabled).toBe(true);
+    expect(reads).toBe(0);
+  });
+
   it("bound customer client", async () => {
     const { ent } = setup();
     const org = ent.customer("org");
