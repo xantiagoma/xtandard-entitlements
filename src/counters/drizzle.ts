@@ -61,12 +61,6 @@ export interface DrizzleCounterStore extends CounterStore {
   purgeExpired(): Promise<void>;
 }
 
-/** The kit's structural Drizzle db, plus the MySQL counter upsert's `execute`/`transaction`. */
-interface CounterDatabase extends DrizzleLikeDatabase {
-  execute?(query: SQL): PromiseLike<unknown>;
-  transaction?<T>(fn: (tx: CounterDatabase) => Promise<T>): Promise<T>;
-}
-
 /** Rows of a MySQL `SELECT` across driver result shapes (`[rows, fields]` or `rows`). */
 function selectRows(result: unknown): Array<Record<string, unknown>> {
   return (Array.isArray(result) ? result : []) as Array<Record<string, unknown>>;
@@ -78,7 +72,7 @@ function selectRows(result: unknown): Array<Record<string, unknown>> {
 export function createDrizzleCounterStore(
   options: DrizzleCounterStoreOptions,
 ): DrizzleCounterStore {
-  const db = options.db as CounterDatabase;
+  const db = options.db as DrizzleLikeDatabase;
   const { table } = options;
   const dialect =
     options.dialect ?? detectDrizzleDialect(db, "@xtandard/entitlements/counters/drizzle");
