@@ -36,6 +36,7 @@ export type {
 } from "../catalog.ts";
 export type { CustomerSummary, GrantInput, OverrideInput, SubscribeInput } from "../engine.ts";
 
+import { ApiError } from "@xtandard/kit/ui";
 import type {
   NormalizedAddon,
   NormalizedFeature,
@@ -114,21 +115,11 @@ export interface SeriesPoint {
 }
 
 /** The JSON error body every non-2xx response carries. */
-export interface ApiErrorBody {
-  error: string;
-  issues?: unknown;
-  [key: string]: unknown;
-}
+export type { ApiErrorBody } from "@xtandard/kit/ui";
 
 /** A non-2xx API response. */
-export class EntitlementsApiError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly body: ApiErrorBody,
-  ) {
-    super(body.error);
-    this.name = "EntitlementsApiError";
-  }
+export class EntitlementsApiError extends ApiError {
+  override name = "EntitlementsApiError";
 }
 
 /** A human message for any thrown value (API errors carry the server's message). */

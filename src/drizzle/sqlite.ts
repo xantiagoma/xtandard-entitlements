@@ -14,10 +14,13 @@
  * export const entitlementsCounters = sqliteCountersTable();
  * ```
  *
+ * The KV table is `sqliteKvTable` from `@xtandard/kit/drizzle/sqlite`.
+ *
  * @module
  */
 
 import type { BuildColumns } from "drizzle-orm";
+import { sqliteKvTable, type SqliteKvTableOptions } from "@xtandard/kit/drizzle/sqlite";
 import {
   integer,
   real,
@@ -30,33 +33,11 @@ import type { DrizzleCounterTable, DrizzleKvTable } from "./table.ts";
 
 export type { DrizzleCounterTable, DrizzleKvTable } from "./table.ts";
 
-/** The `self` passed to an {@link SqliteEntitlementsTableOptions.extraIndexes} callback. */
-type SqliteColumns = BuildColumns<string, Record<string, SQLiteColumnBuilderBase>, "sqlite">;
-
 /** Options for {@link sqliteEntitlementsTable} and {@link sqliteCountersTable}. */
-export interface SqliteEntitlementsTableOptions {
-  /** Additional columns merged into the table. */
-  extraColumns?: () => Record<string, SQLiteColumnBuilderBase>;
-  /** Additional indexes/constraints; receives the built table for column references. */
-  extraIndexes?: (table: SqliteColumns) => SQLiteTableExtraConfigValue[];
-}
+export type SqliteEntitlementsTableOptions = SqliteKvTableOptions;
 
 /** Options for {@link sqliteCountersTable} (same knobs as the KV table). */
 export type SqliteCountersTableOptions = SqliteEntitlementsTableOptions;
-
-function build(
-  name: string,
-  columns: Record<string, SQLiteColumnBuilderBase>,
-  opts: SqliteEntitlementsTableOptions | undefined,
-) {
-  const all = { ...columns, ...opts?.extraColumns?.() };
-  // Cast to the exact `self` type Drizzle infers from `columns` — the public
-  // `extraIndexes` type uses a generic column map, which is a supertype.
-  const extraConfig = opts?.extraIndexes as
-    | ((self: BuildColumns<string, typeof all, "sqlite">) => SQLiteTableExtraConfigValue[])
-    | undefined;
-  return sqliteTable(name, all, extraConfig);
-}
 
 /**
  * Build the SQLite `sqliteTable` for the entitlements KV store: `key text
@@ -67,11 +48,7 @@ export function sqliteEntitlementsTable(
   name = "xtandard_entitlements_kv",
   opts?: SqliteEntitlementsTableOptions,
 ): DrizzleKvTable {
-  return build(
-    name,
-    { key: text("key").primaryKey(), value: text("value", { mode: "json" }).notNull() },
-    opts,
-  ) as unknown as DrizzleKvTable;
+  return sqliteKvTable(name, opts);
 }
 
 /**
@@ -84,14 +61,16 @@ export function sqliteCountersTable(
   name = "xtandard_entitlements_counters",
   opts?: SqliteCountersTableOptions,
 ): DrizzleCounterTable {
-  return build(
-    name,
-    {
-      key: text("key").primaryKey(),
-      value: real("value").notNull().default(0),
-      applied: real("applied").notNull().default(0),
-      expiresAt: integer("expires_at"),
-    },
-    opts,
-  ) as unknown as DrizzleCounterTable;
+  const columns = {
+    key: text("key").primaryKey(),
+    value: real("value").notNull().default(0),
+    applied: real("applied").notNull().default(0),
+    expiresAt: integer("expires_at"),
+    ...opts?.extraColumns?.(),
+  } satisfies Record<string, SQLiteColumnBuilderBase>;
+  // The public `extraIndexes` type uses a generic column map, a supertype of the inferred one.
+  const extraConfig = opts?.extraIndexes as
+    | ((self: BuildColumns<string, typeof columns, "sqlite">) => SQLiteTableExtraConfigValue[])
+    | undefined;
+  return sqliteTable(name, columns, extraConfig) as unknown as DrizzleCounterTable;
 }

@@ -61,12 +61,16 @@ actor `{ id: "cli", type: "system" }`.
 | `MONGO_URL`, `MONGO_DB`, `STORAGE_MONGO_COLLECTION`, `COUNTERS_MONGO_COLLECTION`     | mongodb                                                        | db `xtandard_entitlements`                              |
 | `STORAGE_FILE_DIR`                                                                   | file driver dir                                                | `./.entitlements/state`                                 |
 | `STORAGE_SQLITE_PATH`, `COUNTERS_SQLITE_PATH`                                        | sqlite (Bun only)                                              | `./.entitlements/*.sqlite`                              |
-| `LIBSQL_URL`, `COUNTERS_LIBSQL_URL`, `LIBSQL_AUTH_TOKEN`                             | libsql / Turso                                                 | `file:./.entitlements/*.db`                             |
+| `STORAGE_SQLITE_TABLE`, `COUNTERS_SQLITE_TABLE`                                      | sqlite / libsql table                                          | `xtandard_entitlements_kv` / `…_counters`               |
+| `LIBSQL_URL` (or `STORAGE_LIBSQL_URL`), `COUNTERS_LIBSQL_URL`, `LIBSQL_AUTH_TOKEN`   | libsql / Turso                                                 | `file:./.entitlements/*.db`                             |
 | `PORT`, `BASE_PATH`, `TITLE`, `LOGO_URL`                                             | HTTP + branding                                                | `3000`, `/`, `@xtandard/entitlements`                   |
 | `READONLY`                                                                           | control-plane mutations answer `423`; metering keeps working   | `false`                                                 |
 | `AUTH_MODE`, `AUTH_USERNAME`, `AUTH_ROLE`, `AUTH_PASSWORD_HASH` (or `AUTH_PASSWORD`) | `none` / `basic`                                               | `none`, `admin`, `admin`                                |
 | `PORTAL_SECRET`                                                                      | enables customer-portal tokens                                 | off                                                     |
 | `SWEEP_INTERVAL`                                                                     | release expired reservations this often (`0` disables)         | `1m`                                                    |
+
+An empty variable counts as unset. An unknown `STORAGE_DRIVER`, `COUNTERS_DRIVER` or `AUTH_MODE`
+fails at startup instead of falling back.
 
 The startup banner prints where state lives (file / sqlite paths resolved to absolute) but never a
 connection string.

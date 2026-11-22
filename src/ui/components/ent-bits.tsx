@@ -11,7 +11,7 @@ import {
   usageLevel,
   usageRatio,
 } from "../lib/format.ts";
-import { cn } from "../lib/utils.ts";
+import { cn } from "@xtandard/kit/ui";
 
 /* ─── BrandMark ─────────────────────────────────────────────────────────────── */
 

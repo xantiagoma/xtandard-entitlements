@@ -28,7 +28,7 @@
  * @module
  */
 
-import { escapeGlob, escapeLike } from "../storage/util.ts";
+import { escapeGlob, escapeLike } from "@xtandard/kit/storage";
 import {
   assertAmount,
   computeApplied,

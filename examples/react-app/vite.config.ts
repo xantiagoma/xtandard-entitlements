@@ -52,12 +52,12 @@ function sourceAliases(): Alias[] {
  * In-repo only: build the embed's Tailwind stylesheet from source. Tailwind
  * scans the Vite root (this example) by default, so the stylesheet also gets an
  * `@source` for the package's `src/`; after Vite compiles it, every rule is
- * scoped under `.xtandard-entitlements` (scripts/scope-embed-css.ts, as in the
- * package build).
+ * scoped under `.xtandard-entitlements` (`@xtandard/kit/build`'s `scopeCss`, as
+ * `xtandard-kit scope-embed-css` does in the package build).
  */
 async function fromSource(): Promise<Plugin[]> {
   const { default: tailwindcss } = await import("@tailwindcss/vite");
-  const { scopeCss } = await import("../../scripts/scope-embed-css.ts");
+  const { scopeCss } = await import("@xtandard/kit/build");
   const styles = `${repo}src/ui/styles.css`;
   const isStyles = (id: string) => id.split("?")[0] === styles;
   return [
@@ -69,7 +69,8 @@ async function fromSource(): Promise<Plugin[]> {
     ...tailwindcss(),
     {
       name: "embed-styles:scope",
-      transform: async (code, id) => (isStyles(id) ? scopeCss(code) : undefined),
+      transform: async (code, id) =>
+        isStyles(id) ? scopeCss(code, ".xtandard-entitlements") : undefined,
     },
   ];
 }

@@ -3,33 +3,19 @@ import { describe, expect, test } from "vitest";
 import { createUnstorageStorage } from "../src/storage/unstorage.ts";
 import { runStorageContractTests } from "./storage-contract.ts";
 
-runStorageContractTests("unstorage (memory driver)", () =>
-  createUnstorageStorage({ storage: createStorage() }),
+runStorageContractTests(
+  "unstorage (memory driver)",
+  () => createUnstorageStorage({ storage: createStorage() }),
+  { t: { describe, test, expect }, capabilities: { compareAndSwap: false, watch: false } },
 );
 
-describe("createUnstorageStorage specifics", () => {
-  test("getKeys returns slash-separated keys, not unstorage's colon form", async () => {
-    const storage = createUnstorageStorage({ storage: createStorage() });
-    await storage.setItem("ent/customers/org_1", { v: 1 });
-    await storage.setItem("ent/activity-log", { v: 2 });
-    const keys = await storage.getKeys("ent/");
-    expect(keys.sort()).toEqual(["ent/activity-log", "ent/customers/org_1"]);
-    for (const k of keys) expect(k).not.toContain(":");
-  });
-
-  test("keys with characters unstorage rewrites round-trip verbatim", async () => {
-    const storage = createUnstorageStorage({ storage: createStorage() });
-    const keys = ["ent/a:b", "ent/q?x", "ent/end$", "ent/pct%3A", "ent/back\\slash"];
-    for (const k of keys) await storage.setItem(k, k);
-    for (const k of keys) expect(await storage.getItem(k)).toBe(k);
-    expect((await storage.getKeys("ent/")).sort()).toEqual([...keys].sort());
-    expect(await storage.getKeys("ent/a:")).toEqual(["ent/a:b"]);
-  });
-
-  test("auto-deserializes JSON values and yields null for missing", async () => {
-    const storage = createUnstorageStorage({ storage: createStorage() });
-    expect(await storage.getItem("ent/none")).toBeNull();
-    await storage.setItem("ent/obj", { nested: { ok: true } });
-    expect(await storage.getItem("ent/obj")).toEqual({ nested: { ok: true } });
+describe("createUnstorageStorage (entitlements entry)", () => {
+  test("reads keys an earlier release wrote with every `$` encoded", async () => {
+    const raw = createStorage();
+    // entitlements ≤ 0.1.1 encoded every `$` (and `:`) as %XX before handing keys to unstorage.
+    await raw.setItem("ent:price%24usd%24", { v: 1 });
+    const storage = createUnstorageStorage({ storage: raw });
+    expect(await storage.getItem("ent/price$usd$")).toEqual({ v: 1 });
+    expect(await storage.getKeys("ent/")).toEqual(["ent/price$usd$"]);
   });
 });

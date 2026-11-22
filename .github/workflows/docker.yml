@@ -1,0 +1,32 @@
+name: Docker
+
+# Builds the standalone image (apps/standalone/Dockerfile), smoke-tests
+# /healthcheck and / in a container, then pushes it to GHCR (`latest` on main,
+# `sha-…`, and `vX.Y.Z` on tags): the kit's reusable docker.yml.
+#
+# The image bundles its dependencies, and the lockfile pins @xtandard/kit, so a
+# kit patch doesn't reach a running image on its own. For a kit security fix,
+# run this workflow by hand with `refresh-kit` (it runs `bun update @xtandard/kit`
+# before the build).
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      refresh-kit:
+        description: "Update @xtandard/kit to the latest patch before building"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    uses: xantiagoma/xtandard-kit/.github/workflows/docker.yml@v0.1
+    permissions:
+      contents: read
+      packages: write
+    with:
+      refresh-kit: ${{ inputs.refresh-kit || false }}

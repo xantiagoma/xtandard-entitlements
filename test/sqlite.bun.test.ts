@@ -17,9 +17,27 @@ import { createSqliteStorage } from "../src/storage/sqlite.ts";
 import { runCounterContractTests } from "./counter-contract.ts";
 import { runStorageContractTests } from "./storage-contract.ts";
 
-runStorageContractTests("sqlite (bun:sqlite)", () => createSqliteStorage({ table: "kv" }), {
-  compareAndSwap: true,
-});
+const t = { describe, test, expect };
+const capabilities = { compareAndSwap: true, watch: false };
+
+/** The database behind each storage, for writing legacy (non-canonical) rows directly. */
+const databases = new WeakMap<object, { db: Database; table: string }>();
+const seedLegacy = async (storage: object, key: string, rawJson: string): Promise<void> => {
+  const { db, table } = databases.get(storage)!;
+  db.query(`INSERT OR REPLACE INTO ${table} (key, value) VALUES (?, ?)`).run(key, rawJson);
+};
+
+runStorageContractTests(
+  "sqlite (bun:sqlite)",
+  async () => {
+    const db = new Database(":memory:");
+    const storage = createSqliteStorage({ database: db, table: "kv" });
+    await storage.getKeys(""); // the table is created on first use
+    databases.set(storage, { db, table: "kv" });
+    return storage;
+  },
+  { t, capabilities, seedLegacy },
+);
 runCounterContractTests("sqlite (bun:sqlite)", () => createSqliteCounterStore(), { keys: true });
 
 runStorageContractTests(
@@ -27,9 +45,11 @@ runStorageContractTests(
   () => {
     const db = new Database(":memory:");
     db.run("CREATE TABLE xtandard_entitlements_kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)");
-    return createDrizzleStorage({ db: drizzle(db), table: sqliteEntitlementsTable() });
+    const storage = createDrizzleStorage({ db: drizzle(db), table: sqliteEntitlementsTable() });
+    databases.set(storage, { db, table: "xtandard_entitlements_kv" });
+    return storage;
   },
-  { compareAndSwap: true },
+  { t, capabilities, seedLegacy },
 );
 runCounterContractTests(
   "drizzle counters (bun:sqlite)",

@@ -7,9 +7,9 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "../components/Toast.tsx";
 import { errorMessage } from "../types.ts";
 import { keys } from "./queries.ts";
+import { useToast } from "@xtandard/kit/ui";
 
 /** Options for {@link useCustomerAction}. */
 export interface CustomerActionOptions<V, R> {

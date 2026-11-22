@@ -74,6 +74,11 @@ describe("cli basics", () => {
       _: ["check"],
       flags: { customer: "c", amount: "5", json: true, x: true },
     });
+    // Only `--…` starts a flag; `--version` takes a value (subscribe's plan version).
+    expect(parseArgs(["override", "--value", "-5", "--version", "2", "--reason", "-"])).toEqual({
+      _: ["override"],
+      flags: { value: "-5", version: "2", reason: "-" },
+    });
   });
 });
 
@@ -251,5 +256,33 @@ describe("cli drivers", () => {
     const { driver } = await buildCounters(undefined, plain);
     expect(driver).toBe("memory");
     expect(err).toContain("usage is not persisted");
+  });
+
+  test("libsql storage and counters keep the entitlements tables and env vars", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ent-cli-libsql-"));
+    const previous = { ...process.env };
+    try {
+      process.env.LIBSQL_URL = `file:${join(dir, "state.db")}`;
+      process.env.COUNTERS_LIBSQL_URL = `file:${join(dir, "counters.db")}`;
+      const storage = await buildStorage("libsql");
+      await storage.setItem("ent/customers/c", { id: "c" });
+      const { counters } = await buildCounters("libsql", storage);
+      await counters.add("usage/c/api_calls", 2);
+      const { createClient } = await import("@libsql/client");
+      const state = createClient({ url: process.env.LIBSQL_URL });
+      const tallies = createClient({ url: process.env.COUNTERS_LIBSQL_URL });
+      expect(
+        (await state.execute("SELECT key FROM xtandard_entitlements_kv")).rows.map((r) => r.key),
+      ).toEqual(["ent/customers/c"]);
+      expect(
+        (await tallies.execute("SELECT value FROM xtandard_entitlements_counters")).rows[0]?.value,
+      ).toBe(2);
+      state.close();
+      tallies.close();
+      (storage as { close?(): void }).close?.();
+      await (counters as { close?(): Promise<void> }).close?.();
+    } finally {
+      process.env = previous;
+    }
   });
 });

@@ -21,55 +21,34 @@
  * //       createDrizzleCounterStore({ db, table: entitlementsCounters })
  * ```
  *
+ * The KV table is `pgKvTable` from `@xtandard/kit/drizzle/pg`, with the
+ * entitlements name and `COLLATE "C"` key passed explicitly.
+ *
  * @module
  */
 
-import type { BuildExtraConfigColumns } from "drizzle-orm";
+import { pgKvTable, textC, type PgKvTableOptions } from "@xtandard/kit/drizzle/pg";
 import {
   bigint,
-  customType,
   doublePrecision,
-  jsonb,
   pgSchema,
   pgTable,
+  text,
   type PgColumnBuilderBase,
-  type PgTableExtraConfigValue,
 } from "drizzle-orm/pg-core";
 import type { DrizzleCounterTable, DrizzleKvTable } from "./table.ts";
 
 export type { DrizzleCounterTable, DrizzleKvTable } from "./table.ts";
 
-/** `text COLLATE "C"` — bytewise, case-sensitive keys. */
-const textC = customType<{ data: string; driverData: string }>({
-  dataType: () => 'text COLLATE "C"',
-});
-
-/** The `self` passed to an {@link PgEntitlementsTableOptions.extraIndexes} callback. */
-type PgColumns = BuildExtraConfigColumns<string, Record<string, PgColumnBuilderBase>, "pg">;
-
-/** Options for {@link pgEntitlementsTable} and {@link pgCountersTable}. */
-export interface PgEntitlementsTableOptions {
-  /** Postgres schema (namespace) to place the table in. Defaults to the public schema. */
-  schema?: string;
-  /** Additional columns merged into the table (e.g. a tenant discriminator). */
-  extraColumns?: () => Record<string, PgColumnBuilderBase>;
-  /** Additional indexes/constraints; receives the built table for column references. */
-  extraIndexes?: (table: PgColumns) => PgTableExtraConfigValue[];
-}
+/**
+ * Options for {@link pgEntitlementsTable} and {@link pgCountersTable}: `schema`,
+ * `extraColumns`, `extraIndexes`, and `keyCollation` (default `"C"`; `null`
+ * declares a plain `text` key).
+ */
+export type PgEntitlementsTableOptions = PgKvTableOptions;
 
 /** Options for {@link pgCountersTable} (same knobs as the KV table). */
 export type PgCountersTableOptions = PgEntitlementsTableOptions;
-
-function build(
-  name: string,
-  columns: Record<string, PgColumnBuilderBase>,
-  opts: PgEntitlementsTableOptions | undefined,
-) {
-  const all = { ...columns, ...opts?.extraColumns?.() };
-  return opts?.schema
-    ? pgSchema(opts.schema).table(name, all, opts.extraIndexes)
-    : pgTable(name, all, opts?.extraIndexes);
-}
 
 /**
  * Build the Drizzle `pgTable` for the entitlements KV store. Base columns are
@@ -81,11 +60,7 @@ export function pgEntitlementsTable(
   name = "xtandard_entitlements_kv",
   opts?: PgEntitlementsTableOptions,
 ): DrizzleKvTable {
-  return build(
-    name,
-    { key: textC("key").primaryKey(), value: jsonb("value").notNull() },
-    opts,
-  ) as unknown as DrizzleKvTable;
+  return pgKvTable(name, { keyCollation: "C", ...opts });
 }
 
 /**
@@ -99,14 +74,15 @@ export function pgCountersTable(
   name = "xtandard_entitlements_counters",
   opts?: PgCountersTableOptions,
 ): DrizzleCounterTable {
-  return build(
-    name,
-    {
-      key: textC("key").primaryKey(),
-      value: doublePrecision("value").notNull().default(0),
-      applied: doublePrecision("applied").notNull().default(0),
-      expiresAt: bigint("expires_at", { mode: "number" }),
-    },
-    opts,
-  ) as unknown as DrizzleCounterTable;
+  const columns: Record<string, PgColumnBuilderBase> = {
+    key: (opts?.keyCollation === null ? text("key") : textC("key")).primaryKey(),
+    value: doublePrecision("value").notNull().default(0),
+    applied: doublePrecision("applied").notNull().default(0),
+    expiresAt: bigint("expires_at", { mode: "number" }),
+    ...opts?.extraColumns?.(),
+  };
+  const table = opts?.schema
+    ? pgSchema(opts.schema).table(name, columns, opts.extraIndexes)
+    : pgTable(name, columns, opts?.extraIndexes);
+  return table as unknown as DrizzleCounterTable;
 }

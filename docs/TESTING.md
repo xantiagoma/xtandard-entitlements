@@ -35,9 +35,11 @@ bun run test:bun   # bun:sqlite drivers + Bun-runtime tests (test/*.bun.test.ts)
 bun run test:e2e   # Playwright: admin UI, portal and React embeds
 ```
 
-- **Conformance suites** — `test/storage-contract.ts` (state storage) and `test/counter-contract.ts`
-  (counters: bounded and partial adds under 50-way concurrency, refunds, claims) run against every
-  driver. Live Redis / MongoDB / Postgres / MySQL variants run when `REDIS_URL`, `MONGO_URL`,
+- **Conformance suites** — `test/storage-contract.ts` runs the shared `@xtandard/kit/storage/testing`
+  suite (the one every xtandard driver runs: exact keys, metacharacters, empty segments, CAS incl.
+  legacy non-canonical rows, watch) on each wrapped state driver with the `ent` key root, Redis
+  offline on the kit's `fakeRedis`; `test/counter-contract.ts` (counters: bounded and partial adds
+  under 50-way concurrency, refunds, claims) runs against every counter driver. Live Redis / MongoDB / Postgres / MySQL variants run when `REDIS_URL`, `MONGO_URL`,
   `POSTGRES_URL`, `MYSQL_URL` are set (CI sets them); Postgres also runs in-process on PGlite.
 - **Engine** — `test/engine.test.ts`: refusals never count, 1 500 concurrent consumers against a 1 000
   limit, grant ordering and compensation, overage, credits, reserve / settle, idempotency, thresholds

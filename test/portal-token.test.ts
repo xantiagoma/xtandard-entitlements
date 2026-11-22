@@ -120,3 +120,29 @@ describe("createPortalToken / verifyPortalToken", () => {
     expect((err as Error).name).toBe("PortalTokenError");
   });
 });
+
+describe("portal tokens across releases", () => {
+  // Minted by @xtandard/entitlements 0.1.1 (wire claims `{ customer, exp, scope }`).
+  const FROZEN =
+    "entpt_eyJjdXN0b21lciI6Im9yZ19mcm96ZW4iLCJleHAiOjE3MDAwMDM2MDAwMDAsInNjb3BlIjpbInBvcnRhbDpyZWFkIl19.btFwsxbR-Ts8ukJBRp83ghc_uygVTB9NZg4_JjEK-Rw";
+
+  test("a token minted by the previous release still verifies", async () => {
+    expect(await verifyPortalToken("frozen-secret", FROZEN, { now: 1_700_000_000_000 })).toEqual({
+      customer: "org_frozen",
+      scope: ["portal:read"],
+      expiresAt: 1_700_003_600_000,
+    });
+    await expect(
+      verifyPortalToken("frozen-secret", FROZEN, { now: 1_700_003_600_000 }),
+    ).rejects.toThrow("Portal token has expired");
+  });
+
+  test("rotation: any secret in the list verifies, the first one signs", async () => {
+    const token = await createPortalToken(["new-secret", "frozen-secret"], "org_1");
+    expect((await verifyPortalToken(["new-secret"], token)).customer).toBe("org_1");
+    expect(
+      (await verifyPortalToken(["new-secret", "frozen-secret"], FROZEN, { now: 1_700_000_000_000 }))
+        .customer,
+    ).toBe("org_frozen");
+  });
+});

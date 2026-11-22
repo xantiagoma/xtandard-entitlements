@@ -10,18 +10,19 @@
  * @module
  */
 
+import {
+  jsonObjectSchema as kitJsonObjectSchema,
+  jsonValueSchema as kitJsonValueSchema,
+  parseInput as kitParseInput,
+  type ValidationIssue,
+} from "@xtandard/kit/util";
 import * as v from "valibot";
 import type { JsonObject, JsonValue } from "./catalog.ts";
 import { durationToMs, type Duration } from "./duration.ts";
 import { EntitlementsValidationError } from "./engine.ts";
 import type { SubscriptionStatus } from "./schema.ts";
 
-/** One schema issue: a dotted path into the input and a message. */
-export interface ValidationIssue {
-  /** Dotted path (`"amount"`, `"metadata.plan"`), or `""` for the root. */
-  path: string;
-  message: string;
-}
+export type { ValidationIssue } from "@xtandard/kit/util";
 
 /**
  * Input failed schema validation. An {@link EntitlementsValidationError} (so it
@@ -39,18 +40,11 @@ export class InputValidationError extends EntitlementsValidationError {
   }
 }
 
-const jsonValueSchema: v.GenericSchema<JsonValue> = v.lazy(() =>
-  v.union([
-    v.string(),
-    v.number(),
-    v.boolean(),
-    v.null(),
-    v.array(jsonValueSchema),
-    v.record(v.string(), jsonValueSchema),
-  ]),
-);
+/** Any JSON value (numbers must be finite). */
+const jsonValueSchema = kitJsonValueSchema as v.GenericSchema<JsonValue>;
 
-const jsonObjectSchema = v.record(v.string(), jsonValueSchema) as v.GenericSchema<JsonObject>;
+/** A JSON object (numbers must be finite). */
+const jsonObjectSchema = kitJsonObjectSchema as v.GenericSchema<unknown, JsonObject>;
 
 const nonEmpty = v.pipe(v.string(), v.minLength(1, "must be a non-empty string"));
 const isoTime = v.pipe(
@@ -213,15 +207,6 @@ export const portalCheckoutSchema = v.strictObject({
 /** `POST /api/portal/manage`. */
 export const portalManageSchema = v.strictObject({ returnUrl: v.optional(v.string()) });
 
-/** Flatten valibot issues into `{ path, message }` pairs. */
-function toIssues(issues: readonly v.BaseIssue<unknown>[]): ValidationIssue[] {
-  return issues.map((issue) => ({
-    path: (issue.path ?? []).map((p) => String(p.key)).join("."),
-    // Strict objects report extra keys as "Expected never" — say what it means.
-    message: issue.expected === "never" ? "unknown field" : issue.message,
-  }));
-}
-
 /**
  * Validate `input` against `schema`; return the typed output or throw an
  * {@link InputValidationError} listing every issue.
@@ -232,7 +217,5 @@ function toIssues(issues: readonly v.BaseIssue<unknown>[]): ValidationIssue[] {
  * ```
  */
 export function parseInput<S extends v.GenericSchema>(schema: S, input: unknown): v.InferOutput<S> {
-  const result = v.safeParse(schema, input);
-  if (result.success) return result.output;
-  throw new InputValidationError(toIssues(result.issues));
+  return kitParseInput(schema, input, { error: (issues) => new InputValidationError(issues) });
 }

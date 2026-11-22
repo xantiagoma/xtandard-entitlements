@@ -22,11 +22,15 @@
  */
 
 import {
+  rolesAuthorization as kitRoles,
+  type RolePolicy as KitRolePolicy,
+} from "@xtandard/kit/authorization/roles";
+import {
   ALL_ACTIONS,
   isMutatingAction,
   type AuthorizationProvider,
-  type AuthorizeInput,
   type EntitlementsAction,
+  type EntitlementsResource,
 } from "./contract.ts";
 
 export { ALL_ACTIONS };
@@ -37,7 +41,7 @@ export const READ_ACTIONS: readonly EntitlementsAction[] = ALL_ACTIONS.filter(
 );
 
 /** A role policy: each role maps to an explicit action list or the `"*"` wildcard. */
-export type RolePolicy = Record<string, readonly EntitlementsAction[] | "*">;
+export type RolePolicy = KitRolePolicy<EntitlementsAction>;
 
 /** Read the catalog, customers, usage graphs and activity. */
 export const VIEWER_ACTIONS: readonly EntitlementsAction[] = READ_ACTIONS;
@@ -119,33 +123,9 @@ export interface RolesAuthorizationOptions {
  * ```
  */
 export function rolesAuthorization(options: RolesAuthorizationOptions = {}): AuthorizationProvider {
-  const policy = options.policy ?? DEFAULT_ROLE_POLICY;
-  const readonly = options.readonly ?? false;
-
-  // Pre-compute each role's granted action set for O(1) lookups. A role mapped
-  // to "*" is recorded as `null` (wildcard).
-  const grants = new Map<string, Set<EntitlementsAction> | null>();
-  for (const [role, actions] of Object.entries(policy)) {
-    grants.set(role, actions === "*" ? null : new Set(actions));
-  }
-
-  return {
-    async authorize(input: AuthorizeInput): Promise<boolean> {
-      if (readonly && isMutatingAction(input.action)) return false;
-
-      const principal = input.principal;
-      if (!principal) return false;
-
-      const roles = principal.roles;
-      if (!roles || roles.length === 0) return false;
-
-      for (const role of roles) {
-        if (!grants.has(role)) continue;
-        const granted = grants.get(role);
-        if (granted === null) return true; // wildcard
-        if (granted?.has(input.action)) return true;
-      }
-      return false;
-    },
-  };
+  return kitRoles<EntitlementsAction, EntitlementsResource>({
+    policy: options.policy ?? DEFAULT_ROLE_POLICY,
+    actions: { isMutatingAction },
+    readonly: options.readonly,
+  });
 }

@@ -15,15 +15,17 @@
  * export const entitlementsCounters = mysqlCountersTable();
  * ```
  *
+ * The KV table is `mysqlKvTable` from `@xtandard/kit/drizzle/mysql`; the counter
+ * table reuses its `binVarchar` key column.
+ *
  * @module
  */
 
 import type { BuildColumns } from "drizzle-orm";
+import { binVarchar, mysqlKvTable, type MysqlKvTableOptions } from "@xtandard/kit/drizzle/mysql";
 import {
   bigint,
-  customType,
   double,
-  json,
   mysqlTable,
   type MySqlColumnBuilderBase,
   type MySqlTableExtraConfigValue,
@@ -31,46 +33,18 @@ import {
 import type { DrizzleCounterTable, DrizzleKvTable } from "./table.ts";
 
 export type { DrizzleCounterTable, DrizzleKvTable } from "./table.ts";
+export type { MysqlKeyCollation } from "@xtandard/kit/drizzle/mysql";
 
-/** The `self` passed to an {@link MysqlEntitlementsTableOptions.extraIndexes} callback. */
-type MysqlColumns = BuildColumns<string, Record<string, MySqlColumnBuilderBase>, "mysql">;
-
-/** Options for {@link mysqlEntitlementsTable} and {@link mysqlCountersTable}. */
-export interface MysqlEntitlementsTableOptions {
-  /**
-   * `varchar` length for the `key` primary key. Default `512` (keys are short
-   * slash-delimited paths). Keep within your InnoDB index-prefix limit.
-   */
-  keyLength?: number;
-  /** Additional columns merged into the table. */
-  extraColumns?: () => Record<string, MySqlColumnBuilderBase>;
-  /** Additional indexes/constraints; receives the built table for column references. */
-  extraIndexes?: (table: MysqlColumns) => MySqlTableExtraConfigValue[];
-}
+/**
+ * Options for {@link mysqlEntitlementsTable} and {@link mysqlCountersTable}:
+ * `keyLength` (default `512`), `keyCollation` (default `"utf8mb4_bin"`; pass
+ * `"utf8mb4_0900_bin"` on MySQL 8.0+ or `"utf8mb4_nopad_bin"` on MariaDB for a
+ * NO PAD key), `extraColumns` and `extraIndexes`.
+ */
+export type MysqlEntitlementsTableOptions = MysqlKvTableOptions;
 
 /** Options for {@link mysqlCountersTable} (same knobs as the KV table). */
 export type MysqlCountersTableOptions = MysqlEntitlementsTableOptions;
-
-/** A binary-collated (case-sensitive, byte-exact) varchar key column. */
-function binaryKey(length: number) {
-  return customType<{ data: string; driverData: string }>({
-    dataType: () => `varchar(${length}) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`,
-  })("key").primaryKey();
-}
-
-function build(
-  name: string,
-  columns: Record<string, MySqlColumnBuilderBase>,
-  opts: MysqlEntitlementsTableOptions | undefined,
-) {
-  const all = { ...columns, ...opts?.extraColumns?.() };
-  // Cast to the exact `self` type Drizzle infers from `columns` — the public
-  // `extraIndexes` type uses a generic column map, which is a supertype.
-  const extraConfig = opts?.extraIndexes as
-    | ((self: BuildColumns<string, typeof all, "mysql">) => MySqlTableExtraConfigValue[])
-    | undefined;
-  return mysqlTable(name, all, extraConfig);
-}
 
 /**
  * Build the MySQL `mysqlTable` for the entitlements KV store: `key varchar
@@ -81,11 +55,7 @@ export function mysqlEntitlementsTable(
   name = "xtandard_entitlements_kv",
   opts?: MysqlEntitlementsTableOptions,
 ): DrizzleKvTable {
-  return build(
-    name,
-    { key: binaryKey(opts?.keyLength ?? 512), value: json("value").notNull() },
-    opts,
-  ) as unknown as DrizzleKvTable;
+  return mysqlKvTable(name, opts);
 }
 
 /**
@@ -98,14 +68,16 @@ export function mysqlCountersTable(
   name = "xtandard_entitlements_counters",
   opts?: MysqlCountersTableOptions,
 ): DrizzleCounterTable {
-  return build(
-    name,
-    {
-      key: binaryKey(opts?.keyLength ?? 512),
-      value: double("value").notNull().default(0),
-      applied: double("applied").notNull().default(0),
-      expiresAt: bigint("expires_at", { mode: "number" }),
-    },
-    opts,
-  ) as unknown as DrizzleCounterTable;
+  const columns = {
+    key: binVarchar("key", opts?.keyLength ?? 512, opts?.keyCollation).primaryKey(),
+    value: double("value").notNull().default(0),
+    applied: double("applied").notNull().default(0),
+    expiresAt: bigint("expires_at", { mode: "number" }),
+    ...opts?.extraColumns?.(),
+  } satisfies Record<string, MySqlColumnBuilderBase>;
+  // The public `extraIndexes` type uses a generic column map, a supertype of the inferred one.
+  const extraConfig = opts?.extraIndexes as
+    | ((self: BuildColumns<string, typeof columns, "mysql">) => MySqlTableExtraConfigValue[])
+    | undefined;
+  return mysqlTable(name, columns, extraConfig) as unknown as DrizzleCounterTable;
 }

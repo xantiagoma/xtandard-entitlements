@@ -33,30 +33,36 @@ Optional capabilities (separate interfaces + guards): `watch` (change notificati
 
 Default names say entitlements: the SQL table is `xtandard_entitlements_kv`, the MongoDB database / collection `xtandard_entitlements` / `entitlements_kv`. Redis and Cloudflare KV take an optional `prefix` (joined with `:`).
 
-Conventions shared by every adapter (ported from flags/webhooks): factories return `satisfies`-closed literals; `ownsClient = !options.client` — borrowed clients are never closed; optional peers load via a lazy, memoized dynamic `import()` with an actionable `requirePeer` error; `close()` only closes what the adapter opened.
+The drivers are [`@xtandard/kit`](https://me.xantiagoma.com/xtandard-kit/)'s, shared by every xtandard product; each `@xtandard/entitlements/storage/*` subpath is a thin wrapper that passes the names above and its own import path for error messages. Conventions: borrowed clients are never closed; optional peers (and `bun:sqlite`) load lazily on first use with an actionable error naming the package to install, so importing a subpath never loads its peer; `close()` only closes what the adapter opened; a failed connect or DDL is retried on the next call.
 
 ### Keys are exact
 
 Keys are case-, accent- and byte-exact on every driver, and `getKeys(prefix)` matches the prefix literally — the conformance suite checks `Acme` ≠ `acme`, `café` ≠ `cafe`, and prefixes containing `% _ ! \ * [ ? ] : #`:
 
 - Postgres keys are `text COLLATE "C"`; `LIKE … ESCAPE '!'` (a backslash escape is a syntax error on MySQL, so `!` everywhere).
-- MySQL keys are `varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin` — the default `utf8mb4_0900_ai_ci` would make `…/Acme` and `…/acme` the same row.
+- MySQL keys are `varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin` — the default `utf8mb4_0900_ai_ci` would make `…/Acme` and `…/acme` the same row. Prefixes are a bytewise range (`key >= p AND key < successor(p)`): an indexed `LIKE 'p%'` on `utf8mb4_bin` skips keys with emoji on MySQL 8.4.
+- `utf8mb4_bin` is PAD SPACE: it ignores trailing spaces, so `"a "` and `"a"` would be one row. The driver matches reads, removes and swaps byte-exactly and refuses a colliding write with `KeyCollisionError` (exported from `@xtandard/entitlements/storage/drizzle`). Entitlements encodes every variable key segment (`encodeURIComponent`), so its own keys never end in a space. For new tables, `mysqlEntitlementsTable(name, { keyCollation: "utf8mb4_0900_bin" })` (MySQL 8.0+; `utf8mb4_nopad_bin` on MariaDB) declares a NO PAD key; an existing table can switch in place:
+
+  ```sql
+  ALTER TABLE xtandard_entitlements_kv MODIFY `key` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_bin NOT NULL;
+  ```
+
 - SQLite / libSQL use `GLOB` (SQLite's `LIKE` folds ASCII case).
 - Every SQL, Redis and MongoDB `getKeys` also post-filters with an exact `startsWith`.
 - The file driver encodes each path segment (`A` → `^a`, non-`[a-z0-9._~!@,=+-]` bytes → `%XX`), so keys stay distinct on case- and normalization-insensitive macOS / Windows volumes and can never escape the base directory.
-- unstorage rewrites `\`, `/` and `:` to `:` and drops everything after `?`; the adapter percent-encodes `% : \ ? $` so its key normalization is lossless.
+- unstorage rewrites `\`, `/` and `:` to `:`, drops everything after `?` and hides keys ending in `$`; the adapter percent-encodes `% : \ ?` and a trailing `$` so its key normalization is lossless (keys written by 0.1.x, with every `$` encoded, still read). String values are written JSON-encoded, so a stored `"123"` reads back as the string, not the number.
 
 ### How compare-and-swap works per driver
 
-| Driver                | `compareAndSwap` is…                                                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Redis / RedisJSON     | one Lua script: `cjson`-decode stored and expected values, compare structurally, write on match                                 |
-| Postgres              | `UPDATE … WHERE key = $1 AND value = $2::jsonb` (or `INSERT … ON CONFLICT DO NOTHING` when absence is expected)                 |
-| SQLite / libSQL       | values are stored as canonical JSON (sorted keys), so `UPDATE … WHERE value = ?` is exact                                       |
-| Drizzle               | the same per dialect: `jsonb` equality (pg), `CAST(? AS JSON)` equality (MySQL), canonical JSON text (SQLite)                   |
-| MongoDB               | `updateOne({ _id, $expr: { $eq: ["$value", { $literal: expected }] } })`; values are written with sorted keys                   |
-| File                  | a per-key lock around read → compare → write-then-rename — **one process only**                                                 |
-| unstorage, Workers KV | not available — no shared atomic primitive (KV is eventually consistent); fine for one instance, pair with a real counter store |
+| Driver                | `compareAndSwap` is…                                                                                                                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Redis / RedisJSON     | one Lua script comparing the stored text with the canonical JSON of `expected`; on a miss, a structural compare in JS and a swap on the exact stored text (so `{}` ≠ `[]`, and values written before canonical JSON still swap) |
+| Postgres              | `UPDATE … WHERE key = $1 AND value = $2::jsonb` (or `INSERT … ON CONFLICT DO NOTHING` when absence is expected)                                                                                                                 |
+| SQLite / libSQL       | values are stored as canonical JSON (sorted keys), so `UPDATE … WHERE value = ?` is exact                                                                                                                                       |
+| Drizzle               | the same per dialect: `jsonb` equality (pg), `CAST(? AS JSON)` equality (MySQL), canonical JSON text (SQLite)                                                                                                                   |
+| MongoDB               | `updateOne({ _id, $expr: { $eq: ["$value", { $literal: expected }] } })`; values are written with sorted keys, and a document written in another field order is swapped through a structural fallback                           |
+| File                  | a per-key lock around read → compare → write-then-rename — **one process only**                                                                                                                                                 |
+| unstorage, Workers KV | not available — no shared atomic primitive (KV is eventually consistent); fine for one instance, pair with a real counter store                                                                                                 |
 
 ## Counters: the contract
 
@@ -160,13 +166,18 @@ feature uses `default`. The buffered store decides locally and flushes one `add`
 
 ## Writing your own adapter
 
-Implement the four KV methods (plus `compareAndSwap` if your backend has an atomic conditional write) or the seven counter methods, then run the conformance suites from your test file:
+Implement the four KV methods (plus `compareAndSwap` if your backend has an atomic conditional write) or the seven counter methods, then run the conformance suites from your test file. The storage suite is the one every xtandard driver runs, `@xtandard/kit/storage/testing` (declare every capability; the key root is `ent`); the counter suite is this repository's `test/counter-contract.ts`:
 
 ```ts
-import { runStorageContractTests } from "./storage-contract.ts";
+import { describe, expect, test } from "vitest";
+import { runStorageConformance } from "@xtandard/kit/storage/testing";
 import { runCounterContractTests } from "./counter-contract.ts";
 
-runStorageContractTests("my-kv", () => createMyStorage(), { compareAndSwap: true });
+runStorageConformance("my-kv", () => createMyStorage(), {
+  t: { describe, test, expect },
+  capabilities: { compareAndSwap: true, watch: false },
+  keyRoot: "ent",
+});
 runCounterContractTests("my-counters", () => createMyCounters(), { keys: true });
 ```
 

@@ -7,8 +7,6 @@ import {
   PORTAL_ACTIONS,
   type EntitlementsAction,
 } from "../src/authorization/contract.ts";
-import { delegatedAuthorization } from "../src/authorization/delegated.ts";
-import { noAuthorization } from "../src/authorization/none.ts";
 import {
   BILLING_ADMIN_ACTIONS,
   DEFAULT_ROLE_POLICY,
@@ -97,21 +95,5 @@ describe("rolesAuthorization presets", () => {
     const authz = rolesAuthorization({ policy: { auditor: ["activity:read"] } });
     expect(await allowedFor(["auditor"], authz)).toEqual(["activity:read"]);
     expect(await allowedFor(["admin"], authz)).toEqual([]);
-  });
-});
-
-describe("none / delegated", () => {
-  test("noAuthorization allows everything, even anonymous", async () => {
-    expect(await noAuthorization().authorize(input(null, "customer:delete"))).toBe(true);
-  });
-
-  test("delegatedAuthorization wraps sync and async decisions", async () => {
-    const sync = delegatedAuthorization({ authorize: ({ action }) => action === "catalog:read" });
-    expect(await sync.authorize(input(null, "catalog:read"))).toBe(true);
-    expect(await sync.authorize(input(null, "grant:write"))).toBe(false);
-    const asyncAuthz = delegatedAuthorization({
-      authorize: async ({ resource }) => "customer" in resource && resource.customer === "org_1",
-    });
-    expect(await asyncAuthz.authorize(input(null, "grant:write"))).toBe(true);
   });
 });

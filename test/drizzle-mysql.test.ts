@@ -7,7 +7,7 @@
  */
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
-import { afterAll, describe, vi } from "vitest";
+import { afterAll, describe, expect, test, vi } from "vitest";
 import { createDrizzleCounterStore } from "../src/counters/drizzle.ts";
 import { mysqlCountersTable, mysqlEntitlementsTable } from "../src/drizzle/mysql.ts";
 import { createDrizzleStorage } from "../src/storage/drizzle.ts";
@@ -34,15 +34,32 @@ async function getPool(): Promise<mysql.Pool> {
 
 let n = 0;
 describe.skipIf(!MYSQL_URL)("drizzle mysql (live)", () => {
+  const t = { describe, test, expect };
+  // A NO PAD key (MySQL 8.0+): keys differing only by trailing spaces stay distinct.
   runStorageContractTests(
-    "drizzle (mysql2)",
+    "drizzle (mysql2, utf8mb4_0900_bin key)",
+    async () => {
+      const p = await getPool();
+      const table = mysqlEntitlementsTable(`kv_${n++}`, { keyCollation: "utf8mb4_0900_bin" });
+      await p.query(createTableSql(table, "`"));
+      return createDrizzleStorage({ db: drizzle(p as never), table });
+    },
+    { t, capabilities: { compareAndSwap: true, watch: false }, timeout: 30_000 },
+  );
+  // The default (PAD SPACE `utf8mb4_bin`) key: such a colliding write throws KeyCollisionError.
+  runStorageContractTests(
+    "drizzle (mysql2, default utf8mb4_bin key)",
     async () => {
       const p = await getPool();
       const table = mysqlEntitlementsTable(`kv_${n++}`);
       await p.query(createTableSql(table, "`"));
       return createDrizzleStorage({ db: drizzle(p as never), table });
     },
-    { compareAndSwap: true },
+    {
+      t,
+      capabilities: { compareAndSwap: true, watch: false, padSpaceKeys: true },
+      timeout: 30_000,
+    },
   );
 
   runCounterContractTests(

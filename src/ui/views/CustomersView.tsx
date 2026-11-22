@@ -4,10 +4,16 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { listCustomers } from "../api.ts";
 import { formatDateTime, initials, relativeTime } from "../lib/format.ts";
 import { keys, useCatalog } from "../lib/queries.ts";
-import { EmptyCard, LoadingRow, Mono, PageHeader } from "../components/bits.tsx";
 import { Chip, StatusBadge } from "../components/ent-bits.tsx";
-import { TextInput } from "../components/primitives.tsx";
-import { Avatar, Button } from "../components/ui-bits.tsx";
+import {
+  Avatar,
+  Button,
+  EmptyCard,
+  LoadingRow,
+  Mono,
+  PageHeader,
+  TextInput,
+} from "@xtandard/kit/ui";
 
 const PAGE_SIZE = 20;
 

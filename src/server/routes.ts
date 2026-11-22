@@ -1,9 +1,9 @@
 /**
- * The panel's JSON API (docs/HTTP_API.md is the contract). A tiny
- * method + pattern router over the engine, wired to authentication,
- * authorization, portal-token scoping and valibot input validation. Returns
- * `null` for non-API paths so the caller can fall through to static assets /
- * the SPA.
+ * The panel's JSON API (docs/HTTP_API.md is the contract): the entitlements
+ * route table on the `@xtandard/kit/server/router` declarative router, wired to
+ * authentication, authorization, portal-token scoping and valibot input
+ * validation. Returns `null` for non-API paths so the panel can fall through to
+ * static assets / the SPA.
  *
  * Every route is one entry of {@link API_ROUTES}: method, path, the
  * authorization action and resource, and the handler. The OpenAPI document is
@@ -18,14 +18,31 @@
  * @module
  */
 
-import type { AuthProvider, Principal } from "../auth/contract.ts";
+import {
+  HttpError,
+  intParam,
+  json,
+  mapError as kitMapError,
+  noContent,
+  type ErrorMap,
+} from "@xtandard/kit/server";
+import {
+  createRouter,
+  type Call as KitCall,
+  type Route,
+  type RouteMethod as KitRouteMethod,
+  type RouteQueryParam as KitRouteQueryParam,
+  type RouteSpec as KitRouteSpec,
+  type Router,
+} from "@xtandard/kit/server/router";
+import type { AuthProvider } from "../auth/contract.ts";
 import {
   isMutatingAction,
   type AuthorizationProvider,
   type EntitlementsAction,
   type EntitlementsResource,
 } from "../authorization/contract.ts";
-import { BillingVerificationError, type EntitlementsBilling } from "../billing/contract.ts";
+import type { EntitlementsBilling } from "../billing/contract.ts";
 import type {
   AnyCatalog,
   NormalizedAddon,
@@ -33,15 +50,9 @@ import type {
   NormalizedPlan,
   PricingTable,
 } from "../catalog.ts";
-import {
-  EntitlementsValidationError,
-  NotFoundError,
-  ReadonlyError,
-  type Entitlements,
-} from "../engine.ts";
-import { HookDeniedError } from "../hooks/contract.ts";
+import { NotFoundError, ReadonlyError, type Entitlements } from "../engine.ts";
 import { customersPrefix, lastSegment, reservationKey } from "../keys.ts";
-import { PORTAL_TOKEN_PREFIX, PortalTokenError, verifyPortalToken } from "../portal.ts";
+import { PORTAL_TOKEN_PREFIX, verifyPortalToken } from "../portal.ts";
 import { resolveEntitlements } from "../resolve.ts";
 import type {
   ActivityEntry,
@@ -52,12 +63,12 @@ import type {
   SubscriptionStatus,
 } from "../schema.ts";
 import {
+  InputValidationError,
   cancelSchema,
   customerPatchSchema,
   grantSchema,
   migrateSchema,
   overrideSchema,
-  parseInput,
   portalCheckoutSchema,
   portalManageSchema,
   reconcileSchema,
@@ -71,7 +82,6 @@ import {
   subscriptionPatchSchema,
   trialSchema,
 } from "../validation.ts";
-import type { GenericSchema, InferOutput } from "valibot";
 
 /** Portal composition for the panel: verifies `entpt_…` bearer tokens (ADR 0010). */
 export interface EntitlementsPortalOptions {
@@ -94,6 +104,8 @@ export interface ApiContext {
   portal?: EntitlementsPortalOptions;
   /** Clock for `/api/overview` windows. Default `Date.now`. */
   now?: () => number;
+  /** The document served at `/api/openapi.json`. */
+  openapi?: () => Record<string, unknown>;
 }
 
 /** `GET /config` — the SPA bootstrap (public). */
@@ -164,127 +176,51 @@ export type RouteTag =
   | "billing";
 
 /** HTTP methods the router serves. */
-export type RouteMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type RouteMethod = KitRouteMethod;
 
 /** A query parameter a route documents. */
-export interface RouteQueryParam {
-  name: string;
-  type: "string" | "integer";
-  description: string;
-}
+export type RouteQueryParam = KitRouteQueryParam;
 
 /** The documented shape of one route (consumed by the OpenAPI builder). */
-export interface RouteSpec {
-  method: RouteMethod;
-  /** Pattern with `:name` segments, base-path-relative. */
-  path: string;
-  operationId: string;
-  summary: string;
-  description?: string;
-  tag: RouteTag;
-  /** Authorization action; absent = public (no authentication). */
-  action?: EntitlementsAction;
-  query?: RouteQueryParam[];
-  /** Component schema name of the JSON request body. */
-  body?: string;
-  /** Whether the body is required (default `true` when `body` is set). */
-  bodyRequired?: boolean;
-  /** Success status, component schema name (or inline JSON schema), description. */
-  response: { status: number; schema?: string | Record<string, unknown>; description: string };
+export type RouteSpec = KitRouteSpec<EntitlementsAction, RouteTag>;
+
+/** What a verified portal token grants: one customer, some portal actions. */
+interface PortalGrant {
+  customer: string;
+  scope: ReadonlySet<EntitlementsAction>;
 }
 
 /** Per-request state handed to route handlers. */
-interface Call {
-  request: Request;
-  params: Record<string, string>;
-  query: URLSearchParams;
-  ctx: ApiContext;
-  engine: Entitlements<AnyCatalog>;
-  principal: Principal | null;
-  actor: Actor | null;
-  /** Portal routes: the customer the call is scoped to. */
-  portalCustomer?: string;
-  /** Portal principals: their scope. `null` for admin principals. */
-  portalScope: ReadonlySet<EntitlementsAction> | null;
-  /** Parse + validate the JSON body (an empty body is `{}`). Memoized. */
-  body<S extends GenericSchema>(schema: S): Promise<InferOutput<S>>;
-}
+type Call = KitCall<ApiContext, PortalGrant>;
 
-interface ApiRoute extends RouteSpec {
-  resource?(call: Call): EntitlementsResource | Promise<EntitlementsResource>;
-  handle(call: Call): Promise<Response> | Response;
-}
-
-const json = (data: unknown, status = 200, headers?: Record<string, string>): Response =>
-  new Response(JSON.stringify(data), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8", ...headers },
-  });
-
-const methodNotAllowed = (allow: Iterable<string>): Response =>
-  json({ error: "Method Not Allowed" }, 405, { allow: [...allow].join(", ") });
-
-const noContent = (): Response => new Response(null, { status: 204 });
-
-const error = (status: number, message: string, extra?: Record<string, unknown>): Response =>
-  json({ error: message, ...extra }, status);
+type ApiRoute = Route<EntitlementsAction, EntitlementsResource, ApiContext, PortalGrant, RouteTag>;
 
 const VALIDATION = { code: "VALIDATION" } as const;
 
-/** Thrown inside the router to short-circuit with a response. */
-class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-    readonly extra?: Record<string, unknown>,
-  ) {
-    super(message);
-    this.name = "HttpError";
-  }
-}
-
-/** Match `pattern` (with `:name` segments) against `path`. */
-function match(pattern: string, path: string): Record<string, string> | null {
-  const pp = pattern.split("/").filter(Boolean);
-  const ap = path.split("/").filter(Boolean);
-  if (pp.length !== ap.length) return null;
-  const params: Record<string, string> = {};
-  for (let i = 0; i < pp.length; i++) {
-    const seg = pp[i]!;
-    const val = ap[i]!;
-    if (seg.startsWith(":")) {
-      try {
-        params[seg.slice(1)] = decodeURIComponent(val);
-      } catch {
-        return null;
-      }
-    } else if (seg !== val) return null;
-  }
-  return params;
-}
-
-/** Parse a positive-integer query param, or `undefined`. */
-function intParam(value: string | null): number | undefined {
-  if (value === null || value === "") return undefined;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) {
-    throw new HttpError(
-      400,
-      `Invalid query parameter: expected a positive integer, got "${value}"`,
-    );
-  }
-  return Math.floor(n);
-}
-
-/** Build the activity {@link Actor} for a principal. */
-function actorFor(principal: Principal, portalCustomer?: string): Actor {
-  if (portalCustomer !== undefined) return { id: principal.id, type: "portal" };
+/** The activity {@link Actor} of a call (`null` for anonymous public routes). */
+function actorOf(c: Call): Actor | null {
+  const principal = c.principal;
+  if (!principal) return null;
+  if (c.scoped) return { id: principal.id, type: "portal" };
   return {
     id: principal.id,
     type: "user",
     ...(principal.email !== undefined ? { email: principal.email } : {}),
     ...(principal.name !== undefined ? { name: principal.name } : {}),
   };
+}
+
+/**
+ * The customer a portal route is scoped to: the token's, or (admin preview)
+ * `?customer=`. Resolved in the route's `resource`, so a missing preview
+ * customer answers 400 before authorization.
+ */
+function portalCustomerOf(c: Call): string {
+  const customer = c.scoped ? c.scoped.customer : (c.query.get("customer") ?? undefined);
+  if (customer === undefined) {
+    throw new HttpError(400, "Missing ?customer= (admin preview of a portal)", VALIDATION);
+  }
+  return customer;
 }
 
 const requireBilling = (ctx: ApiContext): EntitlementsBilling => {
@@ -372,7 +308,7 @@ const usageRes = (c: Call): EntitlementsResource => ({
 });
 const portalRes = (c: Call): EntitlementsResource => ({
   type: "portal",
-  customer: c.portalCustomer!,
+  customer: portalCustomerOf(c),
 });
 
 const LIMIT: RouteQueryParam = {
@@ -408,8 +344,7 @@ const ROUTES: ApiRoute[] = [
     summary: "This OpenAPI 3.1 document",
     tag: "panel",
     response: { status: 200, schema: { type: "object" }, description: "OpenAPI 3.1" },
-    // Answered by the handler factory (it owns the document); see handleApiRequest.
-    handle: () => error(500, "unreachable"),
+    handle: (c) => json(c.ctx.openapi?.() ?? {}),
   },
   {
     method: "GET",
@@ -418,7 +353,7 @@ const ROUTES: ApiRoute[] = [
     summary: "Public pricing table (hidden plans excluded; CORS *)",
     tag: "catalog",
     response: { status: 200, schema: "PricingTable", description: "Pricing table" },
-    handle: (c) => json(c.engine.pricing(), 200, { "access-control-allow-origin": "*" }),
+    handle: (c) => json(c.ctx.engine.pricing(), 200, { "access-control-allow-origin": "*" }),
   },
   {
     method: "POST",
@@ -446,7 +381,7 @@ const ROUTES: ApiRoute[] = [
     action: "catalog:read",
     resource: () => ({ type: "catalog" }),
     response: { status: 200, schema: "CatalogView", description: "Catalog" },
-    handle: (c) => json(catalogView(c.engine)),
+    handle: (c) => json(catalogView(c.ctx.engine)),
   },
   {
     method: "GET",
@@ -457,7 +392,7 @@ const ROUTES: ApiRoute[] = [
     action: "customer:read",
     resource: () => ({ type: "customer" }),
     response: { status: 200, schema: "Overview", description: "Overview" },
-    handle: async (c) => json(await buildOverview(c.engine, (c.ctx.now ?? Date.now)())),
+    handle: async (c) => json(await buildOverview(c.ctx.engine, (c.ctx.now ?? Date.now)())),
   },
 
   // --- Admin: customers -------------------------------------------------------
@@ -480,7 +415,7 @@ const ROUTES: ApiRoute[] = [
       const after = c.query.get("after") || undefined;
       const limit = intParam(c.query.get("limit"));
       return json(
-        await c.engine.listCustomers({
+        await c.ctx.engine.listCustomers({
           ...(search !== undefined ? { search } : {}),
           ...(after !== undefined ? { after } : {}),
           ...(limit !== undefined ? { limit } : {}),
@@ -500,8 +435,8 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const id = c.params.id!;
       const [state, entitlements] = await Promise.all([
-        c.engine.getCustomer(id),
-        c.engine.entitlements(id),
+        c.ctx.engine.getCustomer(id),
+        c.ctx.engine.entitlements(id),
       ]);
       return json({ state, entitlements });
     },
@@ -518,7 +453,7 @@ const ROUTES: ApiRoute[] = [
     response: { status: 200, schema: "CustomerState", description: "Updated customer" },
     async handle(c) {
       const patch = await c.body(customerPatchSchema);
-      return json(await c.engine.updateCustomer(c.params.id!, patch, { actor: c.actor }));
+      return json(await c.ctx.engine.updateCustomer(c.params.id!, patch, { actor: actorOf(c) }));
     },
   },
   {
@@ -531,7 +466,7 @@ const ROUTES: ApiRoute[] = [
     resource: customerRes,
     response: { status: 204, description: "Deleted" },
     async handle(c) {
-      await c.engine.deleteCustomer(c.params.id!, { actor: c.actor });
+      await c.ctx.engine.deleteCustomer(c.params.id!, { actor: actorOf(c) });
       return noContent();
     },
   },
@@ -549,7 +484,7 @@ const ROUTES: ApiRoute[] = [
     response: { status: 201, schema: "Subscription", description: "Created subscription" },
     async handle(c) {
       const input = await c.body(subscribeSchema);
-      return json(await c.engine.subscribe(c.params.id!, input, { actor: c.actor }), 201);
+      return json(await c.ctx.engine.subscribe(c.params.id!, input, { actor: actorOf(c) }), 201);
     },
   },
   {
@@ -566,13 +501,13 @@ const ROUTES: ApiRoute[] = [
       const id = c.params.id!;
       const sid = c.params.sid!;
       const patch = await c.body(subscriptionPatchSchema);
-      const state = await c.engine.getCustomer(id);
+      const state = await c.ctx.engine.getCustomer(id);
       const existing = state?.subscriptions.find((s) => s.id === sid);
       if (!existing) throw new NotFoundError(`Subscription "${sid}" not found`);
-      const { subscription } = await c.engine.upsertSubscription(
+      const { subscription } = await c.ctx.engine.upsertSubscription(
         id,
         { ...patch, id: sid, plan: patch.plan ?? existing.plan, provider: existing.provider },
-        { actor: c.actor },
+        { actor: actorOf(c) },
       );
       return json(subscription);
     },
@@ -591,8 +526,8 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const { atPeriodEnd } = await c.body(cancelSchema);
       return json(
-        await c.engine.cancelSubscription(c.params.id!, c.params.sid!, {
-          actor: c.actor,
+        await c.ctx.engine.cancelSubscription(c.params.id!, c.params.sid!, {
+          actor: actorOf(c),
           ...(atPeriodEnd !== undefined ? { atPeriodEnd } : {}),
         }),
       );
@@ -608,7 +543,7 @@ const ROUTES: ApiRoute[] = [
     resource: subRes,
     response: { status: 204, description: "Removed" },
     async handle(c) {
-      await c.engine.removeSubscription(c.params.id!, c.params.sid!, { actor: c.actor });
+      await c.ctx.engine.removeSubscription(c.params.id!, c.params.sid!, { actor: actorOf(c) });
       return noContent();
     },
   },
@@ -625,8 +560,8 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const { plan, days, force } = await c.body(trialSchema);
       return json(
-        await c.engine.startTrial(c.params.id!, plan, {
-          actor: c.actor,
+        await c.ctx.engine.startTrial(c.params.id!, plan, {
+          actor: actorOf(c),
           ...(days !== undefined ? { days } : {}),
           ...(force !== undefined ? { force } : {}),
         }),
@@ -655,8 +590,8 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const { toVersion, customer } = await c.body(migrateSchema);
       return json(
-        await c.engine.migratePlan(customer ?? "*", c.params.plan!, toVersion, {
-          actor: c.actor,
+        await c.ctx.engine.migratePlan(customer ?? "*", c.params.plan!, toVersion, {
+          actor: actorOf(c),
         }),
       );
     },
@@ -696,7 +631,7 @@ const ROUTES: ApiRoute[] = [
     response: { status: 201, schema: "Grant", description: "Created grant" },
     async handle(c) {
       const input = await c.body(grantSchema);
-      return json(await c.engine.grant(c.params.id!, input, { actor: c.actor }), 201);
+      return json(await c.ctx.engine.grant(c.params.id!, input, { actor: actorOf(c) }), 201);
     },
   },
   {
@@ -709,7 +644,7 @@ const ROUTES: ApiRoute[] = [
     resource: (c) => ({ type: "grant", customer: c.params.id!, id: c.params.gid! }),
     response: { status: 204, description: "Revoked" },
     async handle(c) {
-      await c.engine.revokeGrant(c.params.id!, c.params.gid!, { actor: c.actor });
+      await c.ctx.engine.revokeGrant(c.params.id!, c.params.gid!, { actor: actorOf(c) });
       return noContent();
     },
   },
@@ -725,7 +660,7 @@ const ROUTES: ApiRoute[] = [
     response: { status: 201, schema: "Override", description: "Created override" },
     async handle(c) {
       const input = await c.body(overrideSchema);
-      return json(await c.engine.override(c.params.id!, input, { actor: c.actor }), 201);
+      return json(await c.ctx.engine.override(c.params.id!, input, { actor: actorOf(c) }), 201);
     },
   },
   {
@@ -738,7 +673,7 @@ const ROUTES: ApiRoute[] = [
     resource: (c) => ({ type: "override", customer: c.params.id!, id: c.params.oid! }),
     response: { status: 204, description: "Removed" },
     async handle(c) {
-      await c.engine.removeOverride(c.params.id!, c.params.oid!, { actor: c.actor });
+      await c.ctx.engine.removeOverride(c.params.id!, c.params.oid!, { actor: actorOf(c) });
       return noContent();
     },
   },
@@ -758,8 +693,8 @@ const ROUTES: ApiRoute[] = [
       const { value } = await c.body(setUsageSchema);
       const id = c.params.id!;
       const feature = c.params.feature!;
-      await c.engine.setUsage(id, feature, value, { actor: c.actor });
-      return json(await c.engine.check(id, feature, { amount: 0 }));
+      await c.ctx.engine.setUsage(id, feature, value, { actor: actorOf(c) });
+      return json(await c.ctx.engine.check(id, feature, { amount: 0 }));
     },
   },
   {
@@ -772,7 +707,7 @@ const ROUTES: ApiRoute[] = [
     resource: usageRes,
     response: { status: 204, description: "Reset" },
     async handle(c) {
-      await c.engine.resetUsage(c.params.id!, c.params.feature!, { actor: c.actor });
+      await c.ctx.engine.resetUsage(c.params.id!, c.params.feature!, { actor: actorOf(c) });
       return noContent();
     },
   },
@@ -793,7 +728,7 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const days = intParam(c.query.get("days"));
       return json(
-        await c.engine.usageSeries(
+        await c.ctx.engine.usageSeries(
           c.params.id!,
           c.params.feature!,
           days !== undefined ? { days: Math.min(days, 400) } : {},
@@ -810,7 +745,7 @@ const ROUTES: ApiRoute[] = [
     action: "usage:write",
     resource: () => ({ type: "usage" }),
     response: { status: 200, schema: "SweepResult", description: "Released reservations" },
-    handle: async (c) => json(await c.engine.sweep()),
+    handle: async (c) => json(await c.ctx.engine.sweep()),
   },
 
   // --- Admin: activity --------------------------------------------------------
@@ -831,7 +766,7 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const limit = intParam(c.query.get("limit"));
       return json(
-        await c.engine.activity(c.params.id!, limit !== undefined ? { limit } : undefined),
+        await c.ctx.engine.activity(c.params.id!, limit !== undefined ? { limit } : undefined),
       );
     },
   },
@@ -851,7 +786,9 @@ const ROUTES: ApiRoute[] = [
     },
     async handle(c) {
       const limit = intParam(c.query.get("limit"));
-      return json(await c.engine.activity(undefined, limit !== undefined ? { limit } : undefined));
+      return json(
+        await c.ctx.engine.activity(undefined, limit !== undefined ? { limit } : undefined),
+      );
     },
   },
 
@@ -872,7 +809,7 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const { customer, feature, amount } = await c.body(runtimeCheckSchema);
       return json(
-        await c.engine.check(customer, feature, amount !== undefined ? { amount } : undefined),
+        await c.ctx.engine.check(customer, feature, amount !== undefined ? { amount } : undefined),
       );
     },
   },
@@ -895,7 +832,7 @@ const ROUTES: ApiRoute[] = [
       const input = await c.body(runtimeConsumeSchema);
       const idempotencyKey = c.request.headers.get("idempotency-key") ?? input.idempotencyKey;
       return json(
-        await c.engine.consume(
+        await c.ctx.engine.consume(
           input.customer,
           input.feature,
           input.amount,
@@ -919,7 +856,7 @@ const ROUTES: ApiRoute[] = [
     response: { status: 200, schema: "CheckResult", description: "The decision after release" },
     async handle(c) {
       const { customer, feature, amount } = await c.body(runtimeReleaseSchema);
-      return json(await c.engine.release(customer, feature, amount));
+      return json(await c.ctx.engine.release(customer, feature, amount));
     },
   },
   {
@@ -938,7 +875,12 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const { customer, feature, amount, ttl } = await c.body(runtimeReserveSchema);
       return json(
-        await c.engine.reserve(customer, feature, amount, ttl !== undefined ? { ttl } : undefined),
+        await c.ctx.engine.reserve(
+          customer,
+          feature,
+          amount,
+          ttl !== undefined ? { ttl } : undefined,
+        ),
       );
     },
   },
@@ -951,7 +893,7 @@ const ROUTES: ApiRoute[] = [
     action: "runtime:consume",
     async resource(c) {
       const { reservationId } = await c.body(runtimeSettleSchema);
-      const reservation = await c.engine.storage.getItem<Reservation>(
+      const reservation = await c.ctx.engine.storage.getItem<Reservation>(
         reservationKey(reservationId),
       );
       return reservation
@@ -963,7 +905,7 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const { reservationId, actual, overage } = await c.body(runtimeSettleSchema);
       return json(
-        await c.engine.settle(
+        await c.ctx.engine.settle(
           reservationId,
           actual,
           overage !== undefined ? { overage } : undefined,
@@ -980,7 +922,7 @@ const ROUTES: ApiRoute[] = [
     action: "runtime:check",
     resource: (c) => ({ type: "runtime", customer: c.params.customer! }),
     response: { status: 200, schema: "CustomerEntitlements", description: "Entitlements" },
-    handle: async (c) => json(await c.engine.entitlements(c.params.customer!)),
+    handle: async (c) => json(await c.ctx.engine.entitlements(c.params.customer!)),
   },
 
   // --- Portal (portal token, or admin preview with ?customer=) ---------------
@@ -995,16 +937,16 @@ const ROUTES: ApiRoute[] = [
     resource: portalRes,
     response: { status: 200, schema: "PortalView", description: "Portal view" },
     async handle(c) {
-      const id = c.portalCustomer!;
+      const id = portalCustomerOf(c);
       const [state, entitlements] = await Promise.all([
-        c.engine.getCustomer(id),
-        c.engine.entitlements(id),
+        c.ctx.engine.getCustomer(id),
+        c.ctx.engine.entitlements(id),
       ]);
-      const allowed = (a: EntitlementsAction) => c.portalScope === null || c.portalScope.has(a);
+      const allowed = (a: EntitlementsAction) => c.scoped === null || c.scoped.scope.has(a);
       const view: PortalView = {
         ...entitlements,
         profile: profileOf(id, state),
-        pricing: c.engine.pricing(),
+        pricing: c.ctx.engine.pricing(),
         canCheckout: Boolean(c.ctx.billing?.canCheckout) && allowed("portal:checkout"),
         canManage: Boolean(c.ctx.billing?.canManage) && allowed("portal:manage"),
       };
@@ -1025,7 +967,7 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const billing = requireBilling(c.ctx);
       const input = await c.body(portalCheckoutSchema);
-      return json(await billing.createCheckout(c.portalCustomer!, input));
+      return json(await billing.createCheckout(portalCustomerOf(c), input));
     },
   },
   {
@@ -1043,7 +985,7 @@ const ROUTES: ApiRoute[] = [
     async handle(c) {
       const billing = requireBilling(c.ctx);
       const input = await c.body(portalManageSchema);
-      return json(await billing.createPortalSession(c.portalCustomer!, input));
+      return json(await billing.createPortalSession(portalCustomerOf(c), input));
     },
   },
 ];
@@ -1062,43 +1004,15 @@ function profileOf(id: string, state: CustomerState | null): PortalView["profile
   };
 }
 
-interface Authenticated {
-  principal: Principal | null;
-  /** Set for portal-token principals. */
-  portal: { customer: string; scope: ReadonlySet<EntitlementsAction> } | null;
-}
-
-/**
- * Authenticate a request. A portal token short-circuits the host's providers
- * entirely: valid → portal-scoped principal; invalid / expired → 401 (never
- * fall back to the host's auth with an explicitly presented, rejected
- * credential).
- */
-async function authenticate(request: Request, ctx: ApiContext): Promise<Authenticated> {
-  const bearer = request.headers.get("authorization");
-  if (ctx.portal && bearer?.startsWith(`Bearer ${PORTAL_TOKEN_PREFIX}`)) {
-    const claims = await verifyPortalToken(ctx.portal.secret, bearer.slice("Bearer ".length));
-    return {
-      principal: {
-        id: `portal:${claims.customer}`,
-        metadata: { portal: true, customer: claims.customer },
-      },
-      portal: { customer: claims.customer, scope: new Set(claims.scope) },
-    };
-  }
-  // A throwing auth provider is a backend failure (IdP down, DB error) —
-  // surfaced as 500, not a misleading 401. `null` means "no valid credentials".
-  return { principal: await ctx.auth.authenticate(request), portal: null };
-}
-
-function panelConfig(ctx: ApiContext, who: Authenticated): PanelConfig {
-  const { principal, portal } = who;
+/** `GET /config` (and `/api/config`): public, but reports who is asking. */
+function panelConfig(c: Call): PanelConfig {
+  const { ctx, principal, scoped } = c;
   return {
     title: ctx.title,
     ...(ctx.logoUrl !== undefined ? { logoUrl: ctx.logoUrl } : {}),
     basePath: ctx.basePath,
     readonly: ctx.readonly,
-    mode: portal ? "portal" : "admin",
+    mode: scoped ? "portal" : "admin",
     authenticated: principal !== null,
     principal: principal
       ? {
@@ -1108,170 +1022,88 @@ function panelConfig(ctx: ApiContext, who: Authenticated): PanelConfig {
           ...(principal.roles !== undefined ? { roles: principal.roles } : {}),
         }
       : null,
-    ...(portal ? { customer: portal.customer, scope: [...portal.scope] } : {}),
+    ...(scoped ? { customer: scoped.customer, scope: [...scoped.scope] } : {}),
     billingProviders: [...(ctx.billing?.providers ?? [])],
   };
 }
 
+/** The bootstrap-config routes (authenticated so the SPA learns admin vs portal). */
+const CONFIG_ROUTES: ApiRoute[] = CONFIG_PATHS.map((path) => ({
+  method: "GET",
+  path,
+  operationId: path === "/config" ? "getConfig" : "getApiConfig",
+  summary: "SPA bootstrap config: mode (admin / portal), principal, billing providers",
+  tag: "panel",
+  authenticate: true,
+  hidden: true,
+  response: { status: 200, schema: "PanelConfig", description: "Panel config" },
+  handle: (c) => json(panelConfig(c)),
+}));
+
+/** Domain errors by name (docs/HTTP_API.md "Errors"); see `@xtandard/kit/server` `mapError`. */
+const ERRORS: ErrorMap = {
+  ReadonlyError: { status: 423, code: "READONLY" },
+  PortalTokenError: { status: 401, code: "PORTAL_TOKEN" },
+  NotFoundError: { status: 404, code: "NOT_FOUND" },
+  BillingVerificationError: { status: 400, code: "BILLING_VERIFICATION" },
+  EntitlementsValidationError: {
+    status: 400,
+    code: "VALIDATION",
+    extra: (e) => {
+      const issues = (e as { issues?: unknown }).issues;
+      return Array.isArray(issues) ? { issues } : {};
+    },
+  },
+};
+
 /**
- * Handle an API request. `path` is already base-path-stripped. Returns a
- * `Response` for API / config / intake routes, or `null` if the path is not
- * one (static assets and the SPA take it from there). `openapi` builds the
- * document served at `/api/openapi.json`.
+ * Build the API router for one panel. A portal token (`portal` configured)
+ * short-circuits the host's providers: valid → a principal scoped to the
+ * token's customer and actions, allowed only on that customer's portal routes;
+ * invalid or expired → 401, never a fallback to the host's auth.
  */
-export async function handleApiRequest(
-  request: Request,
-  path: string,
+export function createApiRouter(
   ctx: ApiContext,
-  openapi: () => Record<string, unknown>,
-): Promise<Response | null> {
-  const method = request.method.toUpperCase();
-  const isConfig = CONFIG_PATHS.includes(path);
-
-  let route: ApiRoute | undefined;
-  let params: Record<string, string> = {};
-  const allowed = new Set<string>();
-  if (!isConfig) {
-    for (const r of ROUTES) {
-      const m = match(r.path, path);
-      if (!m) continue;
-      allowed.add(r.method);
-      if (!route && (r.method === method || (method === "HEAD" && r.method === "GET"))) {
-        route = r;
-        params = m;
-      }
-    }
-    if (!route) {
-      if (allowed.size > 0) {
-        return methodNotAllowed(allowed);
-      }
-      return path.startsWith("/api/") ? error(404, "Not found") : null;
-    }
-  } else if (method !== "GET" && method !== "HEAD") {
-    return methodNotAllowed(["GET"]);
-  }
-
-  try {
-    if (route?.operationId === "getOpenApi") return json(openapi());
-
-    const query = new URL(request.url).searchParams;
-    let who: Authenticated = { principal: null, portal: null };
-    if (isConfig || route?.action) who = await authenticate(request, ctx);
-    if (isConfig) return json(panelConfig(ctx, who));
-    route = route!;
-
-    // Portal routes: resolve the customer the call is scoped to.
-    let portalCustomer: string | undefined;
-    if (route.tag === "portal") {
-      portalCustomer = who.portal ? who.portal.customer : (query.get("customer") ?? undefined);
-    }
-
-    let raw: Promise<unknown> | undefined;
-    const call: Call = {
-      request,
-      params,
-      query,
-      ctx,
-      engine: ctx.engine,
-      principal: who.principal,
-      actor: who.principal ? actorFor(who.principal, who.portal?.customer) : null,
-      portalScope: who.portal?.scope ?? null,
-      ...(portalCustomer !== undefined ? { portalCustomer } : {}),
-      async body(schema) {
-        raw ??= request.text().then((text) => {
-          if (text.trim() === "") return {};
-          try {
-            return JSON.parse(text) as unknown;
-          } catch {
-            throw new HttpError(400, "Invalid JSON body", VALIDATION);
-          }
-        });
-        return parseInput(schema, await raw);
-      },
-    };
-
-    if (route.action) {
-      if (who.principal === null) {
-        return ctx.auth.challenge?.(request) ?? error(401, "Unauthorized");
-      }
-      if (route.tag === "portal" && portalCustomer === undefined) {
-        throw new HttpError(400, "Missing ?customer= (admin preview of a portal)", VALIDATION);
-      }
-      const resource = await route.resource!(call);
-      if (who.portal) {
-        // Defense in depth: the host's authorization provider is NOT consulted
-        // for portal principals — the token is the whole grant, and it only
-        // ever reaches its own customer's portal routes.
-        if (route.tag !== "portal" || !who.portal.scope.has(route.action)) {
-          return error(403, "Forbidden", { action: route.action });
+): Router<EntitlementsAction, EntitlementsResource, ApiContext, PortalGrant, RouteTag> {
+  const portal = ctx.portal;
+  return createRouter<EntitlementsAction, EntitlementsResource, ApiContext, PortalGrant, RouteTag>({
+    routes: [...CONFIG_ROUTES, ...ROUTES],
+    context: ctx,
+    // Readonly denials keep the engine's message and the 423 status (ADR 0010).
+    readonly: ctx.readonly,
+    isMutatingAction,
+    readonlyStatus: 423,
+    readonlyMessage: (route) => new ReadonlyError(route.operationId).message,
+    auth: ctx.auth,
+    authorization: ctx.authorization,
+    ...(portal
+      ? {
+          scoped: {
+            prefix: PORTAL_TOKEN_PREFIX,
+            async verify(token: string): Promise<PortalGrant> {
+              const claims = await verifyPortalToken(portal.secret, token);
+              return { customer: claims.customer, scope: new Set(claims.scope) };
+            },
+            principal: (grant: PortalGrant) => ({
+              id: `portal:${grant.customer}`,
+              metadata: { portal: true, customer: grant.customer },
+            }),
+            // Defense in depth: the host's provider is never consulted for portal
+            // principals, and a token only ever reaches its own customer's portal.
+            allows: (
+              grant: PortalGrant,
+              action: EntitlementsAction,
+              resource: EntitlementsResource,
+            ) => resource.type === "portal" && grant.scope.has(action),
+          },
         }
-      } else {
-        const ok = await ctx.authorization.authorize({
-          principal: who.principal,
-          action: route.action,
-          resource,
-          request,
-        });
-        if (!ok) return error(403, "Forbidden", { action: route.action });
-      }
-      if (ctx.readonly && isMutatingAction(route.action)) {
-        throw new ReadonlyError(route.operationId);
-      }
-    }
-
-    return await route.handle(call);
-  } catch (err) {
-    return mapError(err);
-  }
+      : {}),
+    errors: ERRORS,
+    validationError: (issues) => new InputValidationError(issues),
+  });
 }
 
-/**
- * Cross-bundle error detection: `instanceof` first, `err.name` fallback. An
- * error thrown from a separate subpath bundle carries its own copy of the
- * class, so `instanceof` alone would mis-map it to 500.
- */
-function isNamed(err: unknown, ctor: new (...args: never[]) => Error, name: string): boolean {
-  return err instanceof ctor || (err instanceof Error && err.name === name);
-}
-
-/**
- * A hook denial, detected by `name` rather than `instanceof` (see
- * {@link isNamed}). Returns the status to respond with, or `null`.
- */
-function hookDeniedStatus(err: unknown): number | null {
-  if (err instanceof HookDeniedError) return err.status;
-  if (err instanceof Error && err.name === "HookDeniedError") {
-    const status = (err as { status?: unknown }).status;
-    return typeof status === "number" ? status : 403;
-  }
-  return null;
-}
-
-/** Map domain errors to HTTP responses (docs/HTTP_API.md "Errors"). */
+/** Map domain errors to HTTP responses (docs/HTTP_API.md "Errors"), by name across bundles. */
 export function mapError(err: unknown): Response {
-  if (err instanceof HttpError) return error(err.status, err.message, err.extra);
-  if (isNamed(err, ReadonlyError, "ReadonlyError")) {
-    return error(423, (err as Error).message, { code: "READONLY" });
-  }
-  const denied = hookDeniedStatus(err);
-  if (denied !== null) return error(denied, (err as Error).message, { code: "HOOK_DENIED" });
-  if (isNamed(err, PortalTokenError, "PortalTokenError")) {
-    return error(401, (err as Error).message, { code: "PORTAL_TOKEN" });
-  }
-  if (isNamed(err, NotFoundError, "NotFoundError")) {
-    return error(404, (err as Error).message, { code: "NOT_FOUND" });
-  }
-  if (isNamed(err, BillingVerificationError, "BillingVerificationError")) {
-    return error(400, (err as Error).message, { code: "BILLING_VERIFICATION" });
-  }
-  if (isNamed(err, EntitlementsValidationError, "EntitlementsValidationError")) {
-    const issues = (err as { issues?: unknown }).issues;
-    return error(400, (err as Error).message, {
-      code: "VALIDATION",
-      ...(Array.isArray(issues) ? { issues } : {}),
-    });
-  }
-  if (err instanceof SyntaxError) return error(400, "Invalid JSON body", VALIDATION);
-  const message = err instanceof Error ? err.message : "Internal error";
-  return error(500, message);
+  return kitMapError(err, ERRORS);
 }

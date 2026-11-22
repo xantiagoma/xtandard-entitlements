@@ -27,7 +27,6 @@ import {
   usageLevel,
   usageRatio,
 } from "../src/ui/lib/format.ts";
-import { takeTokenFromUrl } from "../src/ui/lib/token.ts";
 import {
   overrideModes,
   validateGrant,
@@ -250,32 +249,6 @@ describe("format", () => {
   });
 });
 
-describe("takeTokenFromUrl", () => {
-  test("hash token is taken and stripped, other params kept", () => {
-    let replaced = "";
-    const token = takeTokenFromUrl(
-      { pathname: "/billing/", search: "?x=1", hash: "#token=entpt_abc&tab=usage" },
-      (u) => (replaced = u),
-    );
-    expect(token).toBe("entpt_abc");
-    expect(replaced).toBe("/billing/?x=1#tab=usage");
-  });
-  test("query token works too", () => {
-    let replaced = "";
-    expect(
-      takeTokenFromUrl({ pathname: "/", search: "?token=t1", hash: "" }, (u) => (replaced = u)),
-    ).toBe("t1");
-    expect(replaced).toBe("/");
-  });
-  test("no token → null, URL untouched", () => {
-    let called = false;
-    expect(
-      takeTokenFromUrl({ pathname: "/", search: "", hash: "#x" }, () => (called = true)),
-    ).toBeNull();
-    expect(called).toBe(false);
-  });
-});
-
 describe("validate", () => {
   const features = [
     { key: "api_calls", kind: "metered" as const },
@@ -481,8 +454,12 @@ describe("validate", () => {
 });
 
 test("errorMessage", () => {
-  expect(errorMessage(new EntitlementsApiError(404, { error: "Not found" }))).toBe("Not found");
-  expect(errorMessage(new EntitlementsApiError(500, { error: "" }), "fallback")).toBe("fallback");
+  expect(errorMessage(new EntitlementsApiError(404, { error: "Not found", status: 404 }))).toBe(
+    "Not found",
+  );
+  expect(errorMessage(new EntitlementsApiError(500, { error: "", status: 500 }), "fallback")).toBe(
+    "fallback",
+  );
   expect(errorMessage(new Error("boom"))).toBe("boom");
   expect(errorMessage("weird")).toBe("Something went wrong");
 });

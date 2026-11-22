@@ -25,6 +25,8 @@
  */
 
 import type { NextFunction, Request as ExRequest, Response as ExResponse } from "express";
+import { toExpressMiddleware } from "@xtandard/kit/adapters/express";
+import { writeWebResponse } from "@xtandard/kit/adapters/node";
 import type { AnyCatalog, FeatureKey } from "../catalog.ts";
 import type { Entitlements } from "../engine.ts";
 import type { CheckResult } from "../schema.ts";
@@ -49,66 +51,15 @@ export type ExpressEntitlementsHandler<C extends AnyCatalog = AnyCatalog> = ((
 /** An Express request carrying the guard's decision. */
 export type EntitlementRequest = ExRequest & { entitlement?: CheckResult };
 
-function headersFrom(req: ExRequest): Headers {
-  const headers = new Headers();
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (value === undefined) continue;
-    headers.set(key, Array.isArray(value) ? value.join(", ") : value);
-  }
-  return headers;
-}
-
-async function readBody(req: ExRequest): Promise<Uint8Array | undefined> {
-  const method = (req.method ?? "GET").toUpperCase();
-  if (method === "GET" || method === "HEAD") return undefined;
-
-  // If an upstream body parser already consumed the stream, re-serialize req.body
-  // (admin routes still work; billing signatures over the raw body will not).
-  if (req.readableEnded) {
-    const body = (req as { body?: unknown }).body;
-    if (body === undefined || body === null) return undefined;
-    if (body instanceof Uint8Array) return body;
-    const text = typeof body === "string" ? body : JSON.stringify(body);
-    return new TextEncoder().encode(text);
-  }
-
-  const chunks: Buffer[] = [];
-  for await (const chunk of req as AsyncIterable<Buffer>) chunks.push(chunk);
-  return chunks.length ? new Uint8Array(Buffer.concat(chunks)) : undefined;
-}
-
-function toWebRequest(req: ExRequest, body: Uint8Array | undefined): Request {
-  const protocol = req.protocol || "http";
-  const host = req.get?.("host") ?? req.headers.host ?? "localhost";
-  // originalUrl preserves the mount prefix (e.g. /billing/api/...) and query string.
-  const url = `${protocol}://${host}${req.originalUrl ?? req.url ?? "/"}`;
-  return new Request(url, {
-    method: req.method,
-    headers: headersFrom(req),
-    body: body as BodyInit | undefined,
-  });
-}
-
-async function writeWebResponse(res: ExResponse, response: Response): Promise<void> {
-  res.status(response.status);
-  response.headers.forEach((value, key) => res.setHeader(key, value));
-  const buffer = Buffer.from(await response.arrayBuffer());
-  res.end(buffer);
-}
-
 /** Create an Express handler serving the panel. Use with `app.use(path, handler)`. */
 export function entitlementsPanel<const C extends AnyCatalog = AnyCatalog>(
   options: EntitlementsPanelOptions<C>,
 ): ExpressEntitlementsHandler<C> {
   const handler = createFetchHandler(options);
 
-  const middleware = (req: ExRequest, res: ExResponse, next: NextFunction): void => {
-    (async () => {
-      const body = await readBody(req);
-      const response = await handler.fetch(toWebRequest(req, body));
-      await writeWebResponse(res, response);
-    })().catch(next);
-  };
+  // The kit's Node bridge: every Set-Cookie kept, multi-value headers appended,
+  // pre-parsed bodies re-serialised, responses streamed with backpressure.
+  const middleware = toExpressMiddleware(handler.fetch);
 
   return Object.assign(middleware, {
     engine: handler.engine,

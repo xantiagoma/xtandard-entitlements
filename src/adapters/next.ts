@@ -38,45 +38,18 @@ import {
 } from "../server/create-fetch-handler.ts";
 import { evaluateGuard, outcomeResponse, type RequireEntitlementOptions } from "./guard.ts";
 
-/** A Next.js App Router route handler. */
-export type NextRouteHandler<Ctx = unknown> = (request: Request, context: Ctx) => Promise<Response>;
-
-/** The method exports of a catch-all route. */
-export interface NextRouteHandlers {
-  GET: NextRouteHandler;
-  HEAD: NextRouteHandler;
-  POST: NextRouteHandler;
-  PUT: NextRouteHandler;
-  PATCH: NextRouteHandler;
-  DELETE: NextRouteHandler;
-  OPTIONS: NextRouteHandler;
-}
+/** `toNextHandler(panel)` turns a panel into App Router method exports (`GET`, `POST`, …). */
+export {
+  toNextHandler,
+  type NextRouteHandler,
+  type NextRouteHandlers,
+} from "@xtandard/kit/adapters/next";
 
 /** Create the panel (a `createFetchHandler` result) — pass it to {@link toNextHandler}. */
 export function entitlementsPanel<const C extends AnyCatalog = AnyCatalog>(
   options: EntitlementsPanelOptions<C>,
 ): CreateFetchHandlerResult<C> {
   return createFetchHandler(options);
-}
-
-/**
- * Turn a panel (anything with a web `fetch`) into App Router method exports.
- * Set the panel's `basePath` to the route's mount (e.g. `"/billing"` for
- * `app/billing/[[...path]]/route.ts`).
- */
-export function toNextHandler(panel: {
-  fetch(request: Request): Promise<Response>;
-}): NextRouteHandlers {
-  const handle: NextRouteHandler = (request) => panel.fetch(request);
-  return {
-    GET: handle,
-    HEAD: handle,
-    POST: handle,
-    PUT: handle,
-    PATCH: handle,
-    DELETE: handle,
-    OPTIONS: handle,
-  };
 }
 
 /** Options for {@link withEntitlement}. */

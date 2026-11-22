@@ -6,6 +6,7 @@
  * @module
  */
 
+import { createPass as kitCreatePass, type PassContext } from "@xtandard/kit/adapters/elysia";
 import type { AnyCatalog, FeatureKey } from "../catalog.ts";
 import type { Entitlements } from "../engine.ts";
 import type { CheckResult } from "../schema.ts";
@@ -59,25 +60,17 @@ export function createPass<C extends AnyCatalog>(
 ): {
   prefix: string;
   handler: CreateFetchHandlerResult<C>;
-  pass: (ctx: { request: Request; body?: unknown }) => Promise<Response>;
+  pass: (ctx: PassContext) => Promise<Response>;
   raw: (ctx: { request: Request }) => Promise<Response>;
 } {
   const prefix = options.prefix ?? "/billing";
   const handler = createFetchHandler({ ...options, basePath: options.basePath ?? prefix });
 
-  const pass = (ctx: { request: Request; body?: unknown }): Promise<Response> => {
-    const r = ctx.request;
-    if (ctx.body != null && (r.method === "POST" || r.method === "PUT" || r.method === "PATCH")) {
-      const headers = new Headers(r.headers);
-      headers.set("content-type", "application/json");
-      headers.delete("content-length");
-      return handler.fetch(
-        new Request(r.url, { method: r.method, headers, body: JSON.stringify(ctx.body) }),
-      );
-    }
-    return handler.fetch(r);
-  };
-  const raw = (ctx: { request: Request }): Promise<Response> => handler.fetch(ctx.request);
+  const { pass, raw } = kitCreatePass({
+    prefix,
+    fetch: handler.fetch,
+    name: "xtandard-entitlements",
+  });
 
   return { prefix, handler, pass, raw };
 }

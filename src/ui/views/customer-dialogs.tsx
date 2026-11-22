@@ -15,8 +15,8 @@ import {
 } from "../lib/validate.ts";
 import { formatPrice, isNumeric, limitLabel } from "../lib/format.ts";
 import { CheckboxField, Field, fieldIds, FormDialog, NativeSelect } from "../components/form.tsx";
-import { TextArea, TextInput } from "../components/primitives.tsx";
 import type { CatalogView, CustomerState, FeatureUsage, NormalizedFeature } from "../types.ts";
+import { TextArea, TextInput } from "@xtandard/kit/ui";
 
 interface DialogProps {
   customer: string;

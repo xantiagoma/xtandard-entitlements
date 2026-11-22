@@ -13,13 +13,10 @@ import {
   resetsInLabel,
 } from "../lib/format.ts";
 import { keys } from "../lib/queries.ts";
-import { cn } from "../lib/utils.ts";
-import { EmptyCard, LoadingRow, SectionCard } from "../components/bits.tsx";
 import { StatusBadge, UsageBar } from "../components/ent-bits.tsx";
 import { PricingCards } from "../components/pricing.tsx";
-import { useToast } from "../components/Toast.tsx";
-import { Button } from "../components/ui-bits.tsx";
 import { errorMessage, type PortalView as PortalData } from "../types.ts";
+import { Button, cn, EmptyCard, LoadingRow, SectionCard, useToast } from "@xtandard/kit/ui";
 
 /** Where the browser goes after a link-out (checkout / billing portal). */
 function redirect(url: string): void {
@@ -216,7 +213,7 @@ function PortalBody({ data }: { data: PortalData }) {
       {/* ── Usage ──────────────────────────────────────────────────────────── */}
       {meters.length > 0 ? (
         <SectionCard
-          className="mt-4"
+          className="shadow-sm mt-4"
           title="Usage"
           description="This period, against your plan's limits."
         >
@@ -253,7 +250,7 @@ function PortalBody({ data }: { data: PortalData }) {
 
       {/* ── Features ───────────────────────────────────────────────────────── */}
       {flags.length > 0 ? (
-        <SectionCard className="mt-4" title="Features">
+        <SectionCard className="shadow-sm mt-4" title="Features">
           <ul className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
             {flags.map(({ f, u }) => (
               <li key={f.key} className="flex items-center justify-between gap-3 text-[13px]">

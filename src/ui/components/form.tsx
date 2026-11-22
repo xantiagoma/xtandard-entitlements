@@ -1,8 +1,6 @@
 import * as React from "react";
 import { Dialog } from "@base-ui-components/react/dialog";
-import { cn } from "../lib/utils.ts";
-import { portalContainerRef } from "../lib/portal-container.ts";
-import { Button } from "./ui-bits.tsx";
+import { Button, cn, portalContainerRef } from "@xtandard/kit/ui";
 
 /* ─── Field ─────────────────────────────────────────────────────────────────── */
 

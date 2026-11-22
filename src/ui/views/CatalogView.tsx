@@ -2,12 +2,18 @@ import React from "react";
 import { EyeOff, Star } from "lucide-react";
 import { useCatalog } from "../lib/queries.ts";
 import { entryLabel, formatPrice, resetLabel } from "../lib/format.ts";
-import { cn } from "../lib/utils.ts";
-import { EmptyCard, LoadingRow, Mono, PageHeader, SectionCard } from "../components/bits.tsx";
 import { Chip } from "../components/ent-bits.tsx";
-import { ToggleSwitch } from "../components/primitives.tsx";
 import { PricingCards } from "../components/pricing.tsx";
 import type { CatalogView as CatalogData, NormalizedPlan } from "../types.ts";
+import {
+  cn,
+  EmptyCard,
+  LoadingRow,
+  Mono,
+  PageHeader,
+  SectionCard,
+  ToggleSwitch,
+} from "@xtandard/kit/ui";
 
 const KIND_LABEL: Record<string, string> = {
   boolean: "boolean",
@@ -108,7 +114,7 @@ function CatalogBody({
       </div>
 
       <SectionCard
-        className="mt-6"
+        className="shadow-sm mt-6"
         title="Features × plans"
         description="What each plan includes. Limits are per reset window."
         actions={
@@ -211,7 +217,12 @@ function CatalogBody({
       </SectionCard>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Add-ons" description="Stack on top of a plan." flush>
+        <SectionCard
+          className="shadow-sm"
+          title="Add-ons"
+          description="Stack on top of a plan."
+          flush
+        >
           {data.addons.length === 0 ? (
             <p className="px-4 py-8 text-center text-[13px] text-muted-foreground">No add-ons.</p>
           ) : (
@@ -261,6 +272,7 @@ function CatalogBody({
         </SectionCard>
 
         <SectionCard
+          className="shadow-sm"
           title="Provider mappings"
           description="Billing-provider price / product ids that map to each plan."
           flush
@@ -312,7 +324,7 @@ function CatalogBody({
       </div>
 
       <SectionCard
-        className="mt-4"
+        className="shadow-sm mt-4"
         title="Pricing preview"
         description={
           <>

@@ -7,8 +7,9 @@
  * @module
  */
 
-import { Database } from "bun:sqlite";
-import { assertIdentifier } from "../storage/util.ts";
+import type { Database } from "bun:sqlite";
+import { assertIdentifier } from "@xtandard/kit/storage";
+import { sqliteConnection } from "@xtandard/kit/storage/sqlite/internals";
 import {
   counterTableSql,
   sqlCounterStore,
@@ -46,24 +47,29 @@ export function createSqliteCounterStore(
   options: SqliteCounterStoreOptions = {},
 ): SqliteCounterStore {
   const table = assertIdentifier(options.table ?? "xtandard_entitlements_counters");
-  const ownsDb = !options.database;
-  const db = options.database ?? new Database(options.path ?? ":memory:");
-  db.run(counterTableSql("sqlite", table));
+  const connection = sqliteConnection(
+    options,
+    [counterTableSql("sqlite", table)],
+    "@xtandard/entitlements/counters/sqlite",
+  );
   // `prepare` (not the cached `query`): statements inline per-call literals.
-  const executor: CounterSqlExecutor = {
-    async all(sql, args) {
-      return db.prepare(sql).all(...(args as never[])) as Array<Record<string, unknown>>;
-    },
+  const executor = async (): Promise<CounterSqlExecutor> => {
+    const db = await connection.get();
+    return {
+      async all(sql, args) {
+        return db.prepare(sql).all(...(args as never[])) as Array<Record<string, unknown>>;
+      },
+    };
   };
   return {
     ...sqlCounterStore({
       dialect: "sqlite",
       table,
       now: options.now ?? Date.now,
-      exec: async () => executor,
+      exec: executor,
     }),
     async close() {
-      if (ownsDb) db.close();
+      connection.close();
     },
   };
 }

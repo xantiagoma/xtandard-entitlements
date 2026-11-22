@@ -4,12 +4,10 @@ import { AlarmClock, ChevronRight, CircleAlert, CreditCard, Sparkles, Users } fr
 import { getOverview } from "../api.ts";
 import { daysUntil, formatDate, formatNumber, STATUSES, statusLabel } from "../lib/format.ts";
 import { keys, useCatalog } from "../lib/queries.ts";
-import { cn } from "../lib/utils.ts";
-import { EmptyCard, LoadingRow, Mono, PageHeader, SectionCard } from "../components/bits.tsx";
 import { BarList, StatCard, StatusBadge } from "../components/ent-bits.tsx";
 import { ActivityTimeline } from "../components/activity.tsx";
-import { Button } from "../components/ui-bits.tsx";
 import type { Overview, SubscriptionStatus } from "../types.ts";
+import { Button, cn, EmptyCard, LoadingRow, Mono, PageHeader, SectionCard } from "@xtandard/kit/ui";
 
 const STATUS_FILL: Record<SubscriptionStatus, string> = {
   active: "bg-success",
@@ -131,7 +129,7 @@ function OverviewBody({
         <SectionCard
           title="Customers by plan"
           description="Entitled plan per customer (default plans included)."
-          className="lg:col-span-3"
+          className="shadow-sm lg:col-span-3"
           actions={
             <Button size="sm" variant="ghost" onClick={onOpenCustomers}>
               All customers
@@ -149,7 +147,7 @@ function OverviewBody({
         <SectionCard
           title="Subscription status"
           description={`${formatNumber(totalSubs)} subscriptions`}
-          className="lg:col-span-2"
+          className="shadow-sm lg:col-span-2"
         >
           {totalSubs === 0 ? (
             <p className="py-6 text-center text-[13px] text-muted-foreground">
@@ -202,7 +200,7 @@ function OverviewBody({
         <SectionCard
           title="Trials ending soon"
           description="Next 7 days, soonest first."
-          className="lg:col-span-2"
+          className="shadow-sm lg:col-span-2"
           flush
         >
           {data.trialsEndingSoon.length === 0 ? (
@@ -250,7 +248,7 @@ function OverviewBody({
 
         <SectionCard
           title="Recent activity"
-          className="lg:col-span-3"
+          className="shadow-sm lg:col-span-3"
           actions={
             <Button size="sm" variant="ghost" onClick={onOpenActivity}>
               View all
