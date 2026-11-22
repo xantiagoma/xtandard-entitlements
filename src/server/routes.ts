@@ -1040,23 +1040,6 @@ const CONFIG_ROUTES: ApiRoute[] = CONFIG_PATHS.map((path) => ({
   handle: (c) => json(panelConfig(c)),
 }));
 
-/**
- * Readonly denials keep the entitlements message and status (423, ADR 0010):
- * the router runs a mutating route's handler only after authorization, so the
- * check sits at the top of the handler.
- */
-function withReadonly(route: ApiRoute): ApiRoute {
-  if (route.action === undefined || !isMutatingAction(route.action)) return route;
-  const handle = route.handle;
-  return {
-    ...route,
-    handle(c) {
-      if (c.ctx.readonly) throw new ReadonlyError(route.operationId);
-      return handle(c);
-    },
-  };
-}
-
 /** Domain errors by name (docs/HTTP_API.md "Errors"); see `@xtandard/kit/server` `mapError`. */
 const ERRORS: ErrorMap = {
   ReadonlyError: { status: 423, code: "READONLY" },
@@ -1084,8 +1067,13 @@ export function createApiRouter(
 ): Router<EntitlementsAction, EntitlementsResource, ApiContext, PortalGrant, RouteTag> {
   const portal = ctx.portal;
   return createRouter<EntitlementsAction, EntitlementsResource, ApiContext, PortalGrant, RouteTag>({
-    routes: [...CONFIG_ROUTES, ...ROUTES.map(withReadonly)],
+    routes: [...CONFIG_ROUTES, ...ROUTES],
     context: ctx,
+    // Readonly denials keep the engine's message and the 423 status (ADR 0010).
+    readonly: ctx.readonly,
+    isMutatingAction,
+    readonlyStatus: 423,
+    readonlyMessage: (route) => new ReadonlyError(route.operationId).message,
     auth: ctx.auth,
     authorization: ctx.authorization,
     ...(portal
