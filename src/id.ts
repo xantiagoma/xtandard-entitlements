@@ -3,13 +3,13 @@
  * 10 chars of millisecond timestamp + 12 random chars, Crockford base32.
  *
  * The generator is `createIdGenerator({ format: "ulid-lower22" })` from
- * `@xtandard/kit/util`: the persisted format is unchanged, and ids are now
+ * `@xtandard/kit/util/core`: the persisted format is unchanged, and ids are now
  * monotonic within one millisecond.
  *
  * @module
  */
 
-import { createIdGenerator } from "@xtandard/kit/util";
+import { createIdGenerator } from "@xtandard/kit/util/core";
 
 const ids = createIdGenerator({ format: "ulid-lower22" });
 

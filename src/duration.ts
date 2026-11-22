@@ -3,9 +3,9 @@
  * Zero dependencies; shared by the engine (cache TTL, reservation TTL), the
  * buffered counter store (flush interval) and portal tokens (expiry).
  *
- * Re-exported from `@xtandard/kit/util`.
+ * Re-exported from `@xtandard/kit/util/core`.
  *
  * @module
  */
 
-export { durationToMs, type Duration } from "@xtandard/kit/util";
+export { durationToMs, type Duration } from "@xtandard/kit/util/core";
